@@ -324,11 +324,11 @@ class ImageViewer(QGraphicsView):
         qimage = QtGui.QImage(img_array.data, width, height, bytes_per_line, QtGui.QImage.Format.Format_RGB888)
         return qimage
 
-    def display_image_array(self, img_array: np.ndarray, fit: bool = True):
+    def display_image_array(self, img_array: np.ndarray):
         qimage = self.qimage_from_array(img_array)
         pixmap = QtGui.QPixmap.fromImage(qimage)
         self.clear_scene()
-        self.setPhoto(pixmap, fit=fit)
+        self.setPhoto(pixmap)
 
     def clear_scene(self):
         self.webtoon_manager.clear() 
@@ -340,12 +340,11 @@ class ImageViewer(QGraphicsView):
         self.photo.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
         self._scene.addItem(self.photo)
 
-    def setPhoto(self, pixmap: QtGui.QPixmap = None, fit: bool = True):
+    def setPhoto(self, pixmap: QtGui.QPixmap = None):
         if pixmap and not pixmap.isNull():
             self.empty = False
             self.photo.setPixmap(pixmap)
-            if fit:
-                self.fitInView()
+            self.fitInView()
         else:
             self.empty = True
             self.photo.setPixmap(QtGui.QPixmap())
@@ -417,9 +416,6 @@ class ImageViewer(QGraphicsView):
         item.setPos(QPointF(*properties.position))
         item.setRotation(properties.rotation)
         item.setScale(properties.scale)
-
-        item.set_vertical(bool(properties.vertical))
-        item.set_color(properties.text_color)
             
         # Set selection outlines
         item.selection_outlines = properties.selection_outlines.copy()

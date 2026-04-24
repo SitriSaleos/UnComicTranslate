@@ -13,9 +13,11 @@ from .credentials_page import CredentialsPage
 from .llms_page import LlmsPage
 from .text_rendering_page import TextRenderingPage
 from .export_page import ExportPage
-from .account_page import AccountPage
-from .about_page import AboutPage
 
+
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_file_dir, '..', '..', '..'))
+font_folder_path = os.path.join(project_root, 'resources', 'fonts')
 
 class CurrentPageStack(QtWidgets.QStackedWidget):
     """A QStackedWidget that reports size based on the current page only.
@@ -50,42 +52,29 @@ class SettingsPageUI(QtWidgets.QWidget):
         super(SettingsPageUI, self).__init__(parent)
 
         self.credential_widgets = {}
+        self.export_widgets = {}
 
         self.inpainters = ['LaMa', 'AOT']
         self.detectors = ['RT-DETR-v2']
-        self.ocr_engines = [
-            self.tr("Default"), 
-            self.tr('Microsoft OCR'), 
-            self.tr('Gemini-2.0-Flash'), 
-        ]
+        self.ocr_engines = [self.tr("Default"), self.tr('Microsoft OCR'), self.tr('Google Cloud Vision'), self.tr('GPT-4.1-mini')]
         self.inpaint_strategy = [self.tr('Resize'), self.tr('Original'), self.tr('Crop')]
         self.themes = [self.tr('Dark'), self.tr('Light')]
         self.alignment = [self.tr("Left"), self.tr("Center"), self.tr("Right")]
 
-        self.credential_services = [
-            self.tr("Custom"), 
-        ]
+        self.credential_services = [self.tr("Google Gemini"), self.tr("DeeLX"), self.tr("Custom"), self.tr("Deepseek"), self.tr("Open AI GPT"), self.tr("Microsoft Azure"), self.tr("Google Cloud"), 
+                                    self.tr("DeepL"), self.tr("Anthropic Claude"), self.tr("Yandex")]
         
-        self.supported_translators = [
-            self.tr("Gemini-3.0-Flash"),
-            self.tr("GPT-4.1"),
-            self.tr("GPT-4.1-mini"),
-            self.tr("Claude-4.5-Sonnet"),
-            self.tr("Claude-4.5-Haiku"),
-            self.tr("Deepseek-v3"),
-            self.tr("Custom"),
-        ]
+        self.supported_translators = [self.tr("GPT-4.1"), self.tr("GPT-4.1-mini"), self.tr("DeepL"), 
+                                    self.tr("Claude-4.5-Sonnet"), self.tr("Claude-4.5-Haiku"),
+                                    self.tr("Gemini-3-Flash-Preview"), self.tr("Gemini-3.1-Flash-Lite-Preview"),
+                                    self.tr("Gemini-2.5-Flash"), self.tr("Gemini-2.5-Flash-Lite"), self.tr("Gemini-2.5-Pro"),
+                                    self.tr("Gemma-4-26b-it"), self.tr("Gemma-4-31b-it"),
+                                    self.tr("Yandex"), self.tr("Google Translate"),
+                                    self.tr("Microsoft Translator"), self.tr("Deepseek-v3"), self.tr("DeeLX"), self.tr("Custom"),]
         
-        self.languages = [
-            'English', 
-            '한국어', 
-            'Français', 
-            '简体中文', 
-            'русский', 
-            'Deutsch', 
-            'Español', 
-            'Italiano', 
-        ]
+        self.languages = ['English', '한국어', 'Français', '日本語', 
+         '简体中文', '繁體中文', 'русский', 'Deutsch', 
+         'Nederlands', 'Español', 'Italiano', 'Türkçe']
         
         self.nav_cards = []  
         self.current_highlighted_nav = None
@@ -95,11 +84,15 @@ class SettingsPageUI(QtWidgets.QWidget):
             "English": "English",
             "한국어": "한국어",
             "Français": "Français",
+            "日本語": "日本語",
             "简体中文": "简体中文",
+            "繁體中文": "繁體中文",
             "русский": "русский",
             "Deutsch": "Deutsch",
+            "Nederlands": "Nederlands",
             "Español": "Español",
             "Italiano": "Italiano",
+            "Türkçe": "Türkçe",
 
             # Theme mappings
             self.tr("Dark"): "Dark",
@@ -113,9 +106,17 @@ class SettingsPageUI(QtWidgets.QWidget):
             self.tr("DeepL"): "DeepL",
             self.tr("Claude-4.5-Sonnet"): "Claude-4.5-Sonnet",
             self.tr("Claude-4.5-Haiku"): "Claude-4.5-Haiku",
-            self.tr("Gemini-3.0-Flash"): "Gemini-3.0-Flash",
+            self.tr("Gemini-3-Flash-Preview"): "Gemini-3-Flash-Preview",
+            self.tr("Gemini-3.1-Flash-Lite-Preview"): "Gemini-3.1-Flash-Lite-Preview",
+            self.tr("Gemini-2.5-Flash"): "Gemini-2.5-Flash",
+            self.tr("Gemini-2.5-Flash-Lite"): "Gemini-2.5-Flash-Lite",
             self.tr("Gemini-2.5-Pro"): "Gemini-2.5-Pro",
+            self.tr("Gemini-2.0-Flash"): "Gemini-2.5-Flash",
+            self.tr("Gemini-2.5-Flash-Lite"): "Gemini-2.5-Flash-Lite",
+            self.tr("Gemma-4-26b-it"): "Gemma-4-26b-it",
+            self.tr("Gemma-4-31b-it"): "Gemma-4-31b-it",
             self.tr("Yandex"): "Yandex",
+            self.tr("Google Translate"): "Google Translate",
             self.tr("Microsoft Translator"): "Microsoft Translator",
 
             # OCR mappings
@@ -187,8 +188,6 @@ class SettingsPageUI(QtWidgets.QWidget):
         self.llms_page = LlmsPage(parent=self)
         self.text_rendering_page = TextRenderingPage(parent=self)
         self.export_page = ExportPage(parent=self)
-        self.account_page = AccountPage(parent=self)
-        self.about_page = AboutPage(parent=self)
 
         # Backward-compatible attribute proxies for existing SettingsPage references
         # Personalization
@@ -213,6 +212,12 @@ class SettingsPageUI(QtWidgets.QWidget):
         # LLMs
         self.image_checkbox = self.llms_page.image_checkbox
         self.extra_context = self.llms_page.extra_context
+        self.temp_slider = self.llms_page.temp_slider
+        self.temp_edit = self.llms_page.temp_edit
+        self.top_p_slider = self.llms_page.top_p_slider
+        self.top_p_edit = self.llms_page.top_p_edit
+        self.max_tokens_slider = self.llms_page.max_tokens_slider
+        self.max_tokens_edit = self.llms_page.max_tokens_edit
 
         # Text rendering
         self.min_font_spinbox = self.text_rendering_page.min_font_spinbox
@@ -221,35 +226,20 @@ class SettingsPageUI(QtWidgets.QWidget):
         self.uppercase_checkbox = self.text_rendering_page.uppercase_checkbox
 
         # Export
-        self.auto_save_checkbox = self.export_page.auto_save_checkbox
         self.raw_text_checkbox = self.export_page.raw_text_checkbox
         self.translated_text_checkbox = self.export_page.translated_text_checkbox
         self.inpainted_image_checkbox = self.export_page.inpainted_image_checkbox
-        self.archive_save_as_combo = self.export_page.archive_save_as_combo
-
-        # Account
-        self.sign_in_button = self.account_page.sign_in_button
-        self.sign_out_button = self.account_page.sign_out_button
-        self.buy_credits_button = self.account_page.buy_credits_button
-        self.email_value_label = self.account_page.email_value_label
-        self.tier_value_label = self.account_page.tier_value_label
-        self.credits_value_label = self.account_page.credits_value_label
-        self.logged_out_widget = self.account_page.logged_out_widget
-        self.logged_in_widget = self.account_page.logged_in_widget
-        
-        # System
-        self.check_update_button = self.about_page.check_update_button
-
+        self.web_json_checkbox = self.export_page.web_json_checkbox
+        self.export_widgets = self.export_page.export_widgets
+        self.from_file_types = self.export_page.from_file_types
 
         # Add pages to stacked widget (order must match navbar order)
         self.stacked_widget.addWidget(self.personalization_page)
-        self.stacked_widget.addWidget(self.account_page)
         self.stacked_widget.addWidget(self.tools_page)
+        self.stacked_widget.addWidget(self.credentials_page)
         self.stacked_widget.addWidget(self.llms_page)
         self.stacked_widget.addWidget(self.text_rendering_page)
         self.stacked_widget.addWidget(self.export_page)
-        self.stacked_widget.addWidget(self.credentials_page)
-        self.stacked_widget.addWidget(self.about_page)
 
         settings_layout = QtWidgets.QHBoxLayout()
         
@@ -296,13 +286,11 @@ class SettingsPageUI(QtWidgets.QWidget):
 
         for index, setting in enumerate([
             {"title": self.tr("Personalization"), "avatar": MPixmap(".svg")},
-            {"title": self.tr("Account"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Tools"), "avatar": MPixmap(".svg")},
+            {"title": self.tr("Credentials"), "avatar": MPixmap(".svg")},
             {"title": self.tr("LLMs"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Text Rendering"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Export"), "avatar": MPixmap(".svg")},
-            {"title": self.tr("Advanced"), "avatar": MPixmap(".svg")},
-            {"title": self.tr("About"), "avatar": MPixmap(".svg")},
         ]):
             nav_card = ClickMeta(extra=False)
             nav_card.setup_data(setting)

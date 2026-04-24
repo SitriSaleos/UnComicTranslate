@@ -1,4 +1,4 @@
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtWidgets
 from ..dayu_widgets.label import MLabel
 from ..dayu_widgets.check_box import MCheckBox
 from ..dayu_widgets.combo_box import MComboBox
@@ -7,67 +7,53 @@ from .utils import set_combo_box_width
 class ExportPage(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.export_widgets: dict[str, MComboBox] = {}
 
         layout = QtWidgets.QVBoxLayout(self)
 
         batch_label = MLabel(self.tr("Automatic Mode")).h4()
 
-        self.auto_save_checkbox = MCheckBox(self.tr("Auto-Save Batch Translations"))
-        self.auto_save_note = MLabel(
-            self.tr("Saves to a new comic_translate_<timestamp> folder in the same directory as the input file/archive.")
-        ).secondary()
-        self.auto_save_note.setTextFormat(QtCore.Qt.PlainText)
-        self.auto_save_note.setWordWrap(True)
         self.raw_text_checkbox = MCheckBox(self.tr("Export Raw Text"))
         self.translated_text_checkbox = MCheckBox(self.tr("Export Translated text"))
         self.inpainted_image_checkbox = MCheckBox(self.tr("Export Inpainted Image"))
+        self.web_json_checkbox = MCheckBox(self.tr("Export for Web (Detailed JSON)"))
 
         layout.addWidget(batch_label)
-        layout.addWidget(self.auto_save_note)
-        layout.addWidget(self.auto_save_checkbox)
         layout.addWidget(self.raw_text_checkbox)
         layout.addWidget(self.translated_text_checkbox)
         layout.addWidget(self.inpainted_image_checkbox)
+        layout.addWidget(self.web_json_checkbox)
 
         # File format conversion
         layout.addSpacing(20)
-        self.file_conversion_container = QtWidgets.QWidget(self)
-        file_conversion_layout = QtWidgets.QVBoxLayout(self.file_conversion_container)
-        file_conversion_layout.setContentsMargins(0, 0, 0, 0)
-
         file_conversion_label = MLabel(self.tr("File Format Conversion")).h4()
-        file_conversion_note = MLabel(
-            self.tr(
-                "Applies only when auto-save is enabled and the input is an archive (PDF/CBZ/CBR/EPUB/etc).\n"
-                "Translated archives are saved as <filename>_translated.<ext> next to the original."
-            )
-        ).secondary()
-        file_conversion_note.setTextFormat(QtCore.Qt.PlainText)
-        file_conversion_note.setWordWrap(True)
+        layout.addWidget(file_conversion_label)
 
-        file_conversion_layout.addWidget(file_conversion_label)
-        file_conversion_layout.addWidget(file_conversion_note)
-
-        save_layout = QtWidgets.QHBoxLayout()
-        save_label = MLabel(self.tr("Save archives as:"))
-        self.archive_save_as_combo = MComboBox().small()
-
+        self.from_file_types = ['pdf', 'epub', 'cbr', 'cbz', 'cb7', 'cbt', 'zip', 'rar']
         available_file_types = ['pdf', 'cbz', 'cb7', 'zip']
-        self.archive_save_as_combo.addItems(available_file_types)
-        set_combo_box_width(self.archive_save_as_combo, available_file_types)
-        self.archive_save_as_combo.setCurrentText('zip')
 
-        save_layout.addWidget(save_label)
-        save_layout.addWidget(self.archive_save_as_combo)
-        save_layout.addStretch(1)
-        file_conversion_layout.addLayout(save_layout)
+        for file_type in self.from_file_types:
+            save_layout = QtWidgets.QHBoxLayout()
+            save_label = MLabel(self.tr("Save {file_type} as:").format(file_type=file_type))
+            save_combo = MComboBox().small()
+            save_combo.addItems(available_file_types)
+            set_combo_box_width(save_combo, available_file_types)
 
-        layout.addWidget(self.file_conversion_container)
+            # Defaults
+            if file_type in ['cbr', 'cbt']:
+                save_combo.setCurrentText('cbz')
+            elif file_type == 'rar':
+                save_combo.setCurrentText('zip')
+            elif file_type == 'epub':
+                save_combo.setCurrentText('pdf')
+            elif file_type in available_file_types:
+                save_combo.setCurrentText(file_type)
+
+            self.export_widgets[f'.{file_type.lower()}_save_as'] = save_combo
+
+            save_layout.addWidget(save_label)
+            save_layout.addWidget(save_combo)
+            save_layout.addStretch(1)
+            layout.addLayout(save_layout)
+
         layout.addStretch(1)
-
-        self.auto_save_checkbox.toggled.connect(self._update_file_format_conversion_state)
-        self._update_file_format_conversion_state(self.auto_save_checkbox.isChecked())
-
-    def _update_file_format_conversion_state(self, auto_save_enabled: bool):
-        # Conversion options only apply when we actually write translated archives to disk.
-        self.file_conversion_container.setEnabled(bool(auto_save_enabled))

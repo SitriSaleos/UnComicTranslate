@@ -230,9 +230,9 @@ class ClickMeta(QtWidgets.QWidget):
         
         if highlighted:
             highlight_color = self._original_background_color.darker(130)
-            self.setStyleSheet(f"background-color: {highlight_color.name()}; border: none; padding: 0px;")
+            self.setStyleSheet(f"background-color: {highlight_color.name()};")
         else:
-            self.setStyleSheet(f"background-color: {self._original_background_color.name()}; border: none; padding: 0px;")
+            self.setStyleSheet(f"background-color: {self._original_background_color.name()};")
 
         self.update()
 
@@ -251,26 +251,22 @@ class ClickMeta(QtWidgets.QWidget):
     def sizeHint(self):
         """Return appropriate size hint based on avatar size and content."""
         # If a cover is visible it sits above content and controls the width/height mainly
-        # NOTE: `isVisible()` returns False before the widget is shown (even if the widget is
-        # logically enabled/visible via `setVisible(True)`), which caused sizeHint() to
-        # underestimate sizes on first layout. Use `isHidden()` to reflect intent.
-        cover_size = self._cover_label.size() if not self._cover_label.isHidden() else QtCore.QSize(0, 0)
+        cover_size = self._cover_label.size() if self._cover_label.isVisible() else QtCore.QSize(0, 0)
 
-        # Avatar dimensions:
-        # If avatar_size is known, reserve space for it even if not visible/loaded yet.
-        # This prevents layout jumps when images load in.
-        if self._avatar_size:
-            avatar_width, avatar_height = self._avatar_size
-        elif not self._avatar.isHidden():
-            av_hint = self._avatar.sizeHint()
-            avatar_width, avatar_height = av_hint.width(), av_hint.height()
+        # Avatar dimensions: only count if avatar widget is visible
+        if self._avatar.isVisible():
+            if self._avatar_size:
+                avatar_width, avatar_height = self._avatar_size
+            else:
+                av_hint = self._avatar.sizeHint()
+                avatar_width, avatar_height = av_hint.width(), av_hint.height()
         else:
             avatar_width = 0
             avatar_height = 0
 
         # Content dimensions
-        title_height = self._title_label.sizeHint().height() if not self._title_label.isHidden() else 0
-        desc_height = self._description_label.sizeHint().height() if not self._description_label.isHidden() else 0
+        title_height = self._title_label.sizeHint().height() if self._title_label.isVisible() else 0
+        desc_height = self._description_label.sizeHint().height() if self._description_label.isVisible() else 0
         content_height = title_height + desc_height + 10  # spacing/margins
 
         # Total height: if cover visible, stack cover above content; otherwise rely on avatar/content
@@ -285,8 +281,8 @@ class ClickMeta(QtWidgets.QWidget):
 
         # Total width: max of cover width (if visible) or avatar+content width
         content_width = max(
-            self._title_label.sizeHint().width() if not self._title_label.isHidden() else 0,
-            self._description_label.sizeHint().width() if not self._description_label.isHidden() else 0,
+            self._title_label.sizeHint().width() if self._title_label.isVisible() else 0,
+            self._description_label.sizeHint().width() if self._description_label.isVisible() else 0,
         )
         # If there's an avatar include spacing between avatar and content; if not, don't add extra padding
         if avatar_width:

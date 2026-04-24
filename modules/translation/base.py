@@ -3,7 +3,6 @@ from typing import Any
 import numpy as np
 
 from ..utils.textblock import TextBlock
-from ..utils.language_utils import is_no_space_lang
 
 
 class TranslationEngine(ABC):
@@ -35,7 +34,7 @@ class TranslationEngine(ABC):
         Returns:
             Standardized language code
         """
-        from ..utils.language_utils import get_language_code
+        from ..utils.pipeline_utils import get_language_code
         return get_language_code(language)
     
     def preprocess_text(self, blk_text: str, source_lang_code: str) -> str:
@@ -55,8 +54,10 @@ class TranslationEngine(ABC):
         # Remove newline and carriage‐return characters
         text = blk_text.replace('\r', '').replace('\n', '')
 
-        # 2) If No-Space Language, also remove all spaces
-        if is_no_space_lang(source_lang_code):
+        source_lang_code = source_lang_code.lower()
+        
+        # 2) If Chinese/Japanese, also remove all spaces
+        if 'zh' in source_lang_code or source_lang_code == 'ja':
             return text.replace(' ', '')
         # 3) Otherwise, return the text (with newlines already removed)
         else:

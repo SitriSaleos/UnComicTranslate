@@ -16,9 +16,13 @@ MODEL_MAP = {
     "GPT-4.1-mini": "gpt-4.1-mini",
     "Claude-4.5-Sonnet": "claude-sonnet-4-5-20250929",
     "Claude-4.5-Haiku": "claude-haiku-4-5-20251001",
-    "Gemini-2.0-Flash": "gemini-2.0-flash",
-    "Gemini-3.0-Flash": "gemini-3-flash-preview",
-    "Gemini-2.5-Pro": "gemini-2.5-pro"
+    "Gemini-3-Flash-Preview": "gemini-3-flash-preview",
+    "Gemini-3.1-Flash-Lite-Preview": "gemini-3.1-flash-lite-preview",
+    "Gemini-2.5-Flash": "gemini-2.5-flash",
+    "Gemini-2.5-Flash-Lite": "gemini-2.5-flash-lite",
+    "Gemini-2.5-Pro": "gemini-2.5-pro",
+    "Gemma-4-26b-it": "gemma-4-26b-a4b-it",
+    "Gemma-4-31b-it": "gemma-4-31b-it"
 }
 
 def encode_image_array(img_array: np.ndarray):

@@ -347,25 +347,8 @@ class DrawingManager:
         return final_mask
     
     def draw_segmentation_lines(self, bboxes):
-        stroke = self.make_segmentation_stroke_data(bboxes)
-        if stroke is None:
+        if not self.viewer.hasPhoto() or not bboxes:
             return
-
-        # Wrap in one GraphicsPathItem & emit
-        fill_color = QtGui.QColor(255, 0, 0, 128)  # Semi-transparent red
-        outline_color = QtGui.QColor(255, 0, 0)    # Solid red
-        item = QtWidgets.QGraphicsPathItem(stroke['path'])
-        item.setPen(QtGui.QPen(outline_color, 2, QtCore.Qt.SolidLine))
-        item.setBrush(QtGui.QBrush(fill_color))
-
-        self.viewer.command_emitted.emit(SegmentBoxesCommand(self.viewer, [item]))
-        
-        # Ensure the rectangles are visible
-        self.viewer._scene.update()
-
-    def make_segmentation_stroke_data(self, bboxes):
-        if not bboxes:
-            return None
 
         # 1) Compute tight ROI so mask stays small
         xs = [x for x1, _, x2, _ in bboxes for x in (x1, x2)]
@@ -374,12 +357,12 @@ class DrawingManager:
         min_y, max_y = int(min(ys)), int(max(ys))
         w, h = max_x - min_x + 1, max_y - min_y + 1
 
-        # 2) Down-sample factor to cap mask size
-        long_edge = 2048
-        ds = max(1.0, max(w, h) / long_edge)
+        # 2) Down-sample factor to cap mask size (optional)
+        LONG_EDGE = 2048
+        ds = max(1.0, max(w, h) / LONG_EDGE)
         mw, mh = int(w / ds) + 2, int(h / ds) + 2
 
-        # 3) Paint the true bboxes
+        # 3) Paint the true bboxes (no padding)
         mask = np.zeros((mh, mw), np.uint8)
         for x1, y1, x2, y2 in bboxes:
             x1i = int((x1 - min_x) / ds)
@@ -389,36 +372,43 @@ class DrawingManager:
             mask = imk.rectangle(mask, (x1i, y1i), (x2i, y2i), 255, -1)
 
         # 4) Morphological closing to bridge small gaps
-        ksize = 15
-        kernel = imk.get_structuring_element(imk.MORPH_RECT, (ksize, ksize))
+        KSIZE = 15
+        kernel = imk.get_structuring_element(imk.MORPH_RECT, (KSIZE, KSIZE))
         mask_closed = imk.morphology_ex(mask, imk.MORPH_CLOSE, kernel)
 
-        # 5) Build merged contour path
-        contours, _ = imk.find_contours(mask_closed)
+        # 5) Grab all external contours
+        contours, _ = imk.find_contours(
+            mask_closed
+        )
         if not contours:
-            return None
+            return
 
+        # 6) Build a single QPainterPath merging all contours
         path = QtGui.QPainterPath()
+        # Use winding fill rule so boolean ops (subtract/intersect) behave predictably
         path.setFillRule(Qt.FillRule.WindingFill)
         for cnt in contours:
             pts = cnt.squeeze(1)
             if pts.ndim != 2 or pts.shape[0] < 3:
                 continue
+            # start a subpath for this contour
             x0, y0 = pts[0]
             path.moveTo(x0 * ds + min_x, y0 * ds + min_y)
             for x, y in pts[1:]:
                 path.lineTo(x * ds + min_x, y * ds + min_y)
             path.closeSubpath()
 
-        if path.isEmpty():
-            return None
+        # 7) Wrap in one GraphicsPathItem & emit
+        fill_color = QtGui.QColor(255, 0, 0, 128)  # Semi-transparent red
+        outline_color = QtGui.QColor(255, 0, 0)    # Solid red
+        item = QtWidgets.QGraphicsPathItem(path)
+        item.setPen(QtGui.QPen(outline_color, 2, QtCore.Qt.SolidLine))
+        item.setBrush(QtGui.QBrush(fill_color))
 
-        return {
-            'path': path,
-            'pen': QColor(255, 0, 0).name(QColor.HexArgb),
-            'brush': QColor(255, 0, 0, 128).name(QColor.HexArgb),
-            'width': 2,
-        }
+        self.viewer.command_emitted.emit(SegmentBoxesCommand(self, [item]))
+        
+        # Ensure the rectangles are visible
+        self.viewer._scene.update()
 
     # def draw_segmentation_lines(self, bboxes, layers: int = 1, scale_factor: float = 1.0):
     #     if not self.viewer.hasPhoto() or not bboxes: return

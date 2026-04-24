@@ -331,10 +331,15 @@ def fill_poly(
             reshaped_poly = polygon.reshape(-1, 2)
 
         # Swap x and y coordinates to convert from (x, y) to (y, x)
-        mahotas_poly = reshaped_poly[:, ::-1]
+        mahotas_poly = reshaped_poly[:, ::-1].astype(np.float32)
+
+        # Clip coordinates to image dimensions to avoid IndexError in mahotas
+        h, w = image.shape[:2]
+        mahotas_poly[:, 0] = np.clip(mahotas_poly[:, 0], 0, h - 1)
+        mahotas_poly[:, 1] = np.clip(mahotas_poly[:, 1], 0, w - 1)
 
         # mahotas.polygon.fill_polygon expects a list of (y,x) tuples
-        mahotas_poly_list = list(map(tuple, mahotas_poly))
+        mahotas_poly_list = list(map(tuple, mahotas_poly.astype(np.int32)))
         mh.polygon.fill_polygon(mahotas_poly_list, image, color=color)
 
     return image

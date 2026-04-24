@@ -223,12 +223,6 @@ class WebtoonController:
                     
                 # Clear text edits
                 self.main.text_ctrl.clear_text_edits()
-
-                # Page-skip popup policy:
-                # - show on explicit programmatic jumps (page list/report)
-                # - hide during passive scrolling page changes
-                explicit_navigation = bool(getattr(self.image_viewer, "_programmatic_scroll", False))
-                self.main.image_ctrl.handle_webtoon_page_focus(file_path, explicit_navigation)
                     
             finally:
                 # Use a timer to reset the processing flag to avoid blocking legitimate changes
@@ -255,7 +249,6 @@ class WebtoonController:
             success = self.switch_to_webtoon_mode()
             if success:
                 self.main.webtoon_mode = True
-                self.main.mark_project_dirty()
             else:
                 # Failed to switch, revert toggle
                 self.main.webtoon_toggle.blockSignals(True)
@@ -265,4 +258,3 @@ class WebtoonController:
             # Switch back to regular mode
             self.main.webtoon_mode = False
             self.switch_to_regular_mode()
-            self.main.mark_project_dirty()

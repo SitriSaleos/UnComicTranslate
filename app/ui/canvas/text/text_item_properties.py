@@ -50,7 +50,7 @@ class TextItemProperties:
         if 'text_color' in data:
             if isinstance(data['text_color'], QColor):
                 props.text_color = data['text_color']
-            elif data['text_color'] is not None:
+            else:
                 props.text_color = QColor(data['text_color'])
         
         if 'outline_color' in data:
@@ -124,25 +124,39 @@ class TextItemProperties:
         return props
     
     def to_dict(self) -> dict:
-        """Convert TextItemProperties to dictionary"""
+        """Convert TextItemProperties to serializable dictionary"""
+        def serialize_val(val):
+            if isinstance(val, QColor):
+                return val.name()
+            if hasattr(val, 'value'):  # Enums
+                return val.value
+            if isinstance(val, list):
+                return [serialize_val(v) for v in val]
+            if hasattr(val, '__dataclass_fields__'):  # Dataclasses like OutlineInfo
+                from dataclasses import asdict
+                d = asdict(val)
+                # Recurse into dict to handle QColor inside OutlineInfo
+                return {k: serialize_val(v) for k, v in d.items()}
+            return val
+
         return {
             'text': self.text,
             'font_family': self.font_family,
             'font_size': self.font_size,
-            'text_color': self.text_color,
-            'alignment': self.alignment,
+            'text_color': serialize_val(self.text_color),
+            'alignment': serialize_val(self.alignment),
             'line_spacing': self.line_spacing,
-            'outline_color': self.outline_color,
+            'outline_color': serialize_val(self.outline_color),
             'outline_width': self.outline_width,
             'bold': self.bold,
             'italic': self.italic,
             'underline': self.underline,
-            'direction': self.direction,
+            'direction': serialize_val(self.direction),
             'position': self.position,
             'rotation': self.rotation,
             'scale': self.scale,
             'transform_origin': self.transform_origin,
             'width': self.width,
             'vertical': self.vertical,
-            'selection_outlines': self.selection_outlines,
+            'selection_outlines': [serialize_val(o) for o in self.selection_outlines],
         }

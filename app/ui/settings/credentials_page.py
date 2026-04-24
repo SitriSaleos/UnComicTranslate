@@ -16,15 +16,6 @@ class CredentialsPage(QtWidgets.QWidget):
         content_layout = QtWidgets.QVBoxLayout()
 
         self.save_keys_checkbox = MCheckBox(self.tr("Save Keys"))
-
-        info_label = MLabel(self.tr(
-            "These settings are for advanced users who wish to use their own Custom API endpoints (e.g. Local Language Models) for translation. "
-            "For most users, no configuration is needed here."
-        )).secondary()
-        info_label.setWordWrap(True)
-        
-        content_layout.addWidget(info_label)
-        content_layout.addSpacing(10)
         content_layout.addWidget(self.save_keys_checkbox)
         content_layout.addSpacing(20)
 
@@ -61,28 +52,27 @@ class CredentialsPage(QtWidgets.QWidget):
                 self.credential_widgets["Microsoft Azure_endpoint"] = endpoint_input
 
                 # Translator
-                # # Translator
-                # translate_label = MLabel(self.tr("Translate")).secondary()
-                # service_layout.addWidget(translate_label)
+                translate_label = MLabel(self.tr("Translate")).secondary()
+                service_layout.addWidget(translate_label)
 
-                # translator_api_key_input = MLineEdit()
-                # translator_api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
-                # translator_api_key_input.setFixedWidth(400)
-                # translator_api_key_prefix = MLabel(self.tr("API Key")).border()
-                # set_label_width(translator_api_key_prefix)
-                # translator_api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                # translator_api_key_input.set_prefix_widget(translator_api_key_prefix)
-                # service_layout.addWidget(translator_api_key_input)
-                # self.credential_widgets["Microsoft Azure_api_key_translator"] = translator_api_key_input
+                translator_api_key_input = MLineEdit()
+                translator_api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
+                translator_api_key_input.setFixedWidth(400)
+                translator_api_key_prefix = MLabel(self.tr("API Key")).border()
+                set_label_width(translator_api_key_prefix)
+                translator_api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                translator_api_key_input.set_prefix_widget(translator_api_key_prefix)
+                service_layout.addWidget(translator_api_key_input)
+                self.credential_widgets["Microsoft Azure_api_key_translator"] = translator_api_key_input
 
-                # region_input = MLineEdit()
-                # region_input.setFixedWidth(400)
-                # region_prefix = MLabel(self.tr("Region")).border()
-                # set_label_width(region_prefix)
-                # region_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                # region_input.set_prefix_widget(region_prefix)
-                # service_layout.addWidget(region_input)
-                # self.credential_widgets["Microsoft Azure_region"] = region_input
+                region_input = MLineEdit()
+                region_input.setFixedWidth(400)
+                region_prefix = MLabel(self.tr("Region")).border()
+                set_label_width(region_prefix)
+                region_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                region_input.set_prefix_widget(region_prefix)
+                service_layout.addWidget(region_input)
+                self.credential_widgets["Microsoft Azure_region"] = region_input
 
             elif normalized == "Custom":
                 api_key_input = MLineEdit()
@@ -132,6 +122,37 @@ class CredentialsPage(QtWidgets.QWidget):
                 folder_id_input.set_prefix_widget(folder_id_prefix)
                 service_layout.addWidget(folder_id_input)
                 self.credential_widgets[f"{normalized}_folder_id"] = folder_id_input
+
+            elif normalized == "Google Gemini":
+                api_key_input = MLineEdit()
+                api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
+                api_key_input.setFixedWidth(400)
+                api_key_prefix = MLabel(self.tr("API Key")).border()
+                set_label_width(api_key_prefix)
+                api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                api_key_input.set_prefix_widget(api_key_prefix)
+                service_layout.addWidget(api_key_input)
+                self.credential_widgets[f"{normalized}_api_key"] = api_key_input
+
+            elif normalized == "DeeLX":
+                # Enabled Checkbox
+                self_hosted_checkbox = MCheckBox(self.tr("Enabled"))
+                service_layout.addWidget(self_hosted_checkbox)
+                self.credential_widgets[f"{normalized}_self_hosted"] = self_hosted_checkbox
+
+                # URL Input
+                url_input = MLineEdit()
+                url_input.setFixedWidth(400)
+                url_prefix = MLabel(self.tr("URL")).border()
+                set_label_width(url_prefix)
+                url_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                url_input.set_prefix_widget(url_prefix)
+                service_layout.addWidget(url_input)
+                self.credential_widgets[f"{normalized}_url"] = url_input
+
+                # Initial state & toggle
+                url_input.setEnabled(self_hosted_checkbox.isChecked())
+                self_hosted_checkbox.toggled.connect(url_input.setEnabled)
 
             else:
                 api_key_input = MLineEdit()

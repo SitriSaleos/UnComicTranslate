@@ -1,15 +1,7 @@
-from __future__ import annotations
-
 import logging
-from typing import TYPE_CHECKING
 from modules.translation.processor import Translator
-from modules.utils.translator_utils import set_upper_case
+from modules.utils.translator_utils import set_upper_case, get_raw_translation
 from pipeline.webtoon_utils import filter_and_convert_visible_blocks, restore_original_block_coordinates
-from .cache_manager import CacheManager
-
-if TYPE_CHECKING:
-    from controller import ComicTranslate
-    from .main_pipeline import ComicTranslatePipeline
 
 logger = logging.getLogger(__name__)
 
@@ -17,16 +9,34 @@ logger = logging.getLogger(__name__)
 class TranslationHandler:
     """Handles translation processing with caching support."""
     
-    def __init__(
-            self, 
-            main_page: ComicTranslate, 
-            cache_manager: CacheManager, 
-            pipeline: ComicTranslatePipeline,
-        ):
-        
+    def __init__(self, main_page, cache_manager, pipeline):
         self.main_page = main_page
         self.cache_manager = cache_manager
         self.pipeline = pipeline
+
+    def _get_translation_history(self) -> str:
+        """Gather translation history from previous 3 images."""
+        history = []
+        try:
+            curr_idx = self.main_page.curr_img_idx
+            image_files = self.main_page.image_files
+            
+            # Get up to 3 previous pages
+            start_idx = max(0, curr_idx - 3)
+            for i in range(start_idx, curr_idx):
+                prev_path = image_files[i]
+                prev_state = self.main_page.image_states.get(prev_path, {})
+                prev_blks = prev_state.get('blk_list', [])
+                
+                if prev_blks:
+                    # Filter blocks that actually have translations
+                    blks_with_trans = [b for b in prev_blks if hasattr(b, 'translation') and b.translation]
+                    if blks_with_trans:
+                        history.append(f"--- Previous Page {i+1} Translation History (JSON) ---\n{get_raw_translation(blks_with_trans)}")
+        except Exception as e:
+            logger.error(f"Error gathering translation history: {e}")
+            
+        return "\n\n".join(history)
 
     def translate_image(self, single_block=False):
         source_lang = self.main_page.s_combo.currentText()
@@ -34,7 +44,15 @@ class TranslationHandler:
         if self.main_page.image_viewer.hasPhoto() and self.main_page.blk_list:
             settings_page = self.main_page.settings_page
             image = self.main_page.image_viewer.get_image_array()
-            extra_context = settings_page.get_llm_settings()['extra_context']
+            
+            # Gather extra context and prepend history
+            ui_extra_context = settings_page.get_llm_settings()['extra_context']
+            history = self._get_translation_history()
+            
+            extra_context = ui_extra_context
+            if history:
+                extra_context = f"{history}\n\nExisting Context:\n{ui_extra_context}" if ui_extra_context else history
+            
             translator_key = settings_page.get_tool_selection('translator')
 
             upper_case = settings_page.ui.uppercase_checkbox.isChecked()
@@ -135,7 +153,15 @@ class TranslationHandler:
         
         # Perform translation on the visible image with filtered blocks
         settings_page = self.main_page.settings_page
-        extra_context = settings_page.get_llm_settings()['extra_context']
+        
+        # Gather extra context and prepend history
+        ui_extra_context = settings_page.get_llm_settings()['extra_context']
+        history = self._get_translation_history()
+        
+        extra_context = ui_extra_context
+        if history:
+            extra_context = f"{history}\n\nExisting Context:\n{ui_extra_context}" if ui_extra_context else history
+            
         upper_case = settings_page.ui.uppercase_checkbox.isChecked()
         
         translator = Translator(self.main_page, source_lang, target_lang)

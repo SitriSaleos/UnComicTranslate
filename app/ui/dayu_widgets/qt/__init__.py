@@ -25,16 +25,12 @@ import six
 
 
 class MCacheDict(object):
+    _render = QSvgRenderer()
+
     def __init__(self, cls):
         super(MCacheDict, self).__init__()
         self.cls = cls
         self._cache_pix_dict = {}
-        self._renderer = None
-
-    def _get_renderer(self):
-        if self._renderer is None:
-            self._renderer = QSvgRenderer()
-        return self._renderer
 
     def _render_svg(self, svg_path, replace_color=None):
         # Import local modules
@@ -47,12 +43,11 @@ class MCacheDict(object):
             data_content = f.read()
             if replace_color is not None:
                 data_content = data_content.replace("#555555", replace_color)
-            renderer = self._get_renderer()
-            renderer.load(QtCore.QByteArray(six.b(data_content)))
+            self._render.load(QtCore.QByteArray(six.b(data_content)))
             pix = QtGui.QPixmap(128, 128)
             pix.fill(QtCore.Qt.transparent)
             painter = QtGui.QPainter(pix)
-            renderer.render(painter)
+            self._render.render(painter)
             painter.end()
             if self.cls is QtGui.QPixmap:
                 return pix

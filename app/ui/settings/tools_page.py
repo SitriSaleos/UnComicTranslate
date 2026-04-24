@@ -3,7 +3,6 @@ from ..dayu_widgets.label import MLabel
 from ..dayu_widgets.check_box import MCheckBox
 from ..dayu_widgets.spin_box import MSpinBox
 from .utils import create_title_and_combo, set_combo_box_width
-from modules.utils.device import is_gpu_available
 
 class ToolsPage(QtWidgets.QWidget):
     def __init__(
@@ -27,13 +26,13 @@ class ToolsPage(QtWidgets.QWidget):
         translator_widget, self.translator_combo = create_title_and_combo(self.tr("Translator"), self.translators, h4=True)
         set_combo_box_width(self.translator_combo, self.translators)
 
-        ocr_widget, self.ocr_combo = create_title_and_combo(self.tr("Text Recognition"), self.ocr_engines, h4=True)
+        ocr_widget, self.ocr_combo = create_title_and_combo(self.tr("OCR"), self.ocr_engines, h4=True)
         set_combo_box_width(self.ocr_combo, self.ocr_engines)
 
         detector_widget, self.detector_combo = create_title_and_combo(self.tr("Text Detector"), self.detectors, h4=True)
         set_combo_box_width(self.detector_combo, self.detectors)
 
-        inpainting_label = MLabel(self.tr("Image Cleaning")).h4()
+        inpainting_label = MLabel(self.tr("Inpainting")).h4()
         inpainter_widget, self.inpainter_combo = create_title_and_combo(self.tr("Inpainter"), self.inpainters, h4=False)
         set_combo_box_width(self.inpainter_combo, self.inpainters)
         self.inpainter_combo.setCurrentText(self.tr("AOT"))
@@ -100,11 +99,7 @@ class ToolsPage(QtWidgets.QWidget):
         self.crop_widget.hide()
         self.inpaint_strategy_combo.currentIndexChanged.connect(self._update_hd_strategy_widgets)
 
-
         self.use_gpu_checkbox = MCheckBox(self.tr("Use GPU"))
-        if not is_gpu_available():
-            self.use_gpu_checkbox.setVisible(False)
-
 
         layout.addWidget(translator_widget)
         layout.addSpacing(10)

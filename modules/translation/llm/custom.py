@@ -28,4 +28,3 @@ class CustomTranslation(GPTTranslation):
         
         # Override the API base URL with the custom one
         self.api_base_url = credentials.get('api_url', '').rstrip('/')
-        self.timeout = 120  # Custom timeout for potentially slower custom LLMs

@@ -4,12 +4,13 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Callable, Iterable, Optional, Dict, List, Union
 from .download_file import download_url_to_file
-from .paths import get_user_data_dir
 
 logger = logging.getLogger(__name__)
 
 # Paths / Globals
-models_base_dir = os.path.join(get_user_data_dir(), "models")
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_file_dir, '..', '..'))
+models_base_dir = os.path.join(project_root, 'models')
 
 
 _download_event_callback: Optional[Callable[[str, str], None]] = None
@@ -61,7 +62,7 @@ class ModelID(Enum):
     MIGAN_PIPELINE_ONNX = "migan-pipeline-v2"
     MIGAN_ONNX = "migan-onnx"
     MIGAN_JIT = "migan-traced"
-    RTDETR_V2_ONNX = "rtdetr-v2-onnx"
+    RTDETRV2_ONNX = "rtdetr-v2-onnx"
     
     # PPOCRv5 Detection Models
     PPOCR_V5_DET_MOBILE = "ppocr-v5-det-mobile"
@@ -223,11 +224,7 @@ class ModelDownloader:
 # Core download implementations (shared)
 
 def _download_single_file(file_url: str, file_path: str, expected_checksum: Optional[str]):
-    msg = f'Downloading: "{file_url}" to {os.path.dirname(file_path)}\n'
-    if sys.stderr:
-        sys.stderr.write(msg)
-    else:
-        logger.info(msg.strip())
+    sys.stderr.write(f'Downloading: "{file_url}" to {os.path.dirname(file_path)}\n')
     notify_download_event('start', os.path.basename(file_path))
     download_url_to_file(file_url, file_path, hash_prefix=None, progress=True)
     notify_download_event('end', os.path.basename(file_path))
@@ -265,7 +262,7 @@ def _download_single_file(file_url: str, file_path: str, expected_checksum: Opti
 def _download_spec(spec: ModelSpec):
     if not os.path.exists(spec.save_dir):
         os.makedirs(spec.save_dir, exist_ok=True)
-        logger.info(f"Created directory: {spec.save_dir}")
+        print(f"Created directory: {spec.save_dir}")
 
     for remote_name, expected_checksum in zip(spec.files, spec.sha256):
         # Determine URL for remote filename
@@ -293,14 +290,14 @@ def _download_spec(spec: ModelSpec):
                     algo = 'md5'
                 else:
                     # Unknown checksum format: force re-download
-                    logger.warning(
+                    print(
                         f"Unknown checksum format for {remote_name} (len={len(expected_checksum)}). Redownloading..."
                     )
                     calculated = None
                     algo = None
             except Exception:
                 # If checksum calculation fails, force re-download
-                logger.warning(f"Failed to calculate checksum for {local_name}. Redownloading...")
+                print(f"Failed to calculate checksum for {local_name}. Redownloading...")
                 calculated = None
                 algo = None
 
@@ -308,7 +305,7 @@ def _download_spec(spec: ModelSpec):
                 continue
             else:
                 if calculated:
-                    logger.warning(
+                    print(
                         f"Checksum mismatch for {local_name}. Expected {expected_checksum}, got {calculated}. Redownloading..."
                     )
 
@@ -444,7 +441,7 @@ def _register_defaults():
     ))
 
     ModelDownloader.register(ModelSpec(
-        id=ModelID.RTDETR_V2_ONNX,
+        id=ModelID.RTDETRV2_ONNX,
         url='https://huggingface.co/ogkalu/comic-text-and-bubble-detector/resolve/main/',
         files=['detector.onnx'],
         sha256=['065744e91c0594ad8663aa8b870ce3fb27222942eded5a3cc388ce23421bd195'], 

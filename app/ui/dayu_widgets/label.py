@@ -134,8 +134,6 @@ class MLabel(QtWidgets.QLabel):
     dayu_elide_mod = QtCore.Property(QtCore.Qt.TextElideMode, get_dayu_code, set_dayu_code)
 
     def minimumSizeHint(self):
-        if self.wordWrap():
-            return super(MLabel, self).minimumSizeHint()
         return QtCore.QSize(1, self.fontMetrics().height())
 
     def text(self):
@@ -171,12 +169,9 @@ class MLabel(QtWidgets.QLabel):
         """
         Update the elided text on the label
         """
+        _font_metrics = self.fontMetrics()
         text = self.property("text")
         text = text if text else ""
-        if self.wordWrap():
-            super(MLabel, self).setText(text)
-            return
-        _font_metrics = self.fontMetrics()
         _elided_text = _font_metrics.elidedText(text, self._elide_mode, self.width() - 2 * 2)
         super(MLabel, self).setText(_elided_text)
 

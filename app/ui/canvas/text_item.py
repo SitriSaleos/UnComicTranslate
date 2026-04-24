@@ -6,8 +6,6 @@ from PySide6.QtCore import Qt, QRectF, Signal, QPointF
 import math, copy
 from dataclasses import dataclass
 from enum import Enum
-from .text.vertical_layout import VerticalTextDocumentLayout
-
 
 @dataclass
 class TextBlockState:
@@ -72,17 +70,12 @@ class TextBlockItem(QGraphicsTextItem):
         self.line_spacing = line_spacing
         self.direction = direction
 
-        self.layout = None
-        self.vertical = False
-
         self.selected = False
         self.resizing = False
         self.resize_handle = None
         self.resize_start = None
         self.editing_mode = False
         self.last_selection = None 
-        self._drag_selecting = False
-        self._drag_select_anchor = None
 
         # Rotation properties
         self.rot_handle = None
@@ -107,71 +100,6 @@ class TextBlockItem(QGraphicsTextItem):
 
         # Set the initial text direction
         self._apply_text_direction()
-
-    def set_vertical(self, vertical: bool):
-        doc = self.document()
-        is_already_vertical = isinstance(doc.documentLayout(), VerticalTextDocumentLayout)
-
-        if vertical == is_already_vertical:
-            return
-
-        self.vertical = vertical
-
-        # Disconnect signals from the old layout if it's our custom one
-        if is_already_vertical:
-            old_layout = doc.documentLayout()
-            if old_layout:
-                try:
-                    old_layout.size_enlarged.disconnect(self.on_document_enlarged)
-                    old_layout.documentSizeChanged.disconnect(self.setCenterTransform)
-                except (TypeError, RuntimeError): # Already disconnected
-                    pass
-        
-        # Inform the graphics system that the geometry will change
-        self.prepareGeometryChange()
-        current_rect = self.boundingRect()
-
-        # Disable text interaction while changing layout
-        self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
-        
-        if doc.documentLayout():
-            doc.documentLayout().blockSignals(True)
-
-        if vertical:
-            layout = VerticalTextDocumentLayout(
-                document=doc,
-                line_spacing=self.line_spacing,
-            )
-            self.layout = layout
-            doc.setDocumentLayout(layout)
-            
-            # Connect signals for the new layout
-            layout.size_enlarged.connect(self.on_document_enlarged)
-            layout.documentSizeChanged.connect(self.setCenterTransform)
-            
-            # Initialize layout with the item's current size.
-            # set_max_size enforces the dimensions, but a text item with no 
-            # set text has negligible size, so this can collapse the layout.
-            # Only uncomment if set_vertical runs after plain text is set.
-            # layout.set_max_size(current_rect.width(), current_rect.height())
-            # layout.update_layout()
-
-        else:  # Switching back to horizontal
-            self.layout = None
-            doc.setDocumentLayout(None)  # Qt will restore the default layout.
-            self.setTextWidth(current_rect.width())
-        
-        # After setting the new layout, update the item's state
-        self.setCenterTransform()
-        self.update()
-
-    def setCenterTransform(self):
-        center = self.boundingRect().center()
-        self.setTransformOriginPoint(center)
-
-    def on_document_enlarged(self):
-        self.prepareGeometryChange()
-        self.setCenterTransform()
 
     def _apply_text_direction(self):
         text_option = self.document().defaultTextOption()
@@ -215,7 +143,9 @@ class TextBlockItem(QGraphicsTextItem):
         self.update_text_format('font', font)
 
     def set_font_size(self, font_size):
+        # Ensure minimum font size.
         font_size = max(1, font_size)
+        
         if not self.textCursor().hasSelection():
             self.font_size = font_size
         self.update_text_format('size', font_size)
@@ -401,16 +331,6 @@ class TextBlockItem(QGraphicsTextItem):
         # Then handle any selection outlines
         if self.selection_outlines:
             doc = self.document().clone()
-            
-            # Preserve vertical layout if in vertical mode
-            if self.vertical and self.layout:
-                vertical_layout = VerticalTextDocumentLayout(
-                    document=doc,
-                    line_spacing=self.layout.line_spacing,
-                )
-                doc.setDocumentLayout(vertical_layout)
-                vertical_layout.set_max_size(self.layout.max_width, self.layout.max_height)
-
             painter.save()
             
             # Clear the document first to only show outlined parts
@@ -475,125 +395,7 @@ class TextBlockItem(QGraphicsTextItem):
     def mouseDoubleClickEvent(self, event):
         if not self.editing_mode:
             self.enter_editing_mode()
-            if self.layout:
-                hit = self.layout.hitTest(event.pos(), None)
-                cursor = self.textCursor()
-                cursor.setPosition(hit)
-                self.setTextCursor(cursor)
         super().mouseDoubleClickEvent(event)
-
-    def mousePressEvent(self, event):
-        # Handle single clicks in editing mode for vertical text
-        if self.editing_mode and self.layout and event.button() == Qt.MouseButton.LeftButton:
-            hit = self.layout.hitTest(event.pos(), None)
-            cursor = self.textCursor()
-            
-            # Check if shift is pressed for selection
-            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                self._drag_select_anchor = cursor.anchor()
-                cursor.setPosition(hit, QTextCursor.MoveMode.KeepAnchor)
-            else:
-                cursor.setPosition(hit)
-                self._drag_select_anchor = hit
-            
-            self._drag_selecting = True
-            self.setTextCursor(cursor)
-            self.setFocus()
-            event.accept()
-        else:
-            super().mousePressEvent(event)
-
-    def keyPressEvent(self, event):
-
-        if self.editing_mode and self.vertical:
-            key = event.key()
-            modifiers = event.modifiers()
-            
-            if key == Qt.Key.Key_Down:
-                # Down arrow in vertical text = move to next character
-                cursor = self.textCursor()
-                move_mode = QTextCursor.MoveMode.KeepAnchor if (modifiers & Qt.KeyboardModifier.ShiftModifier) else QTextCursor.MoveMode.MoveAnchor
-                cursor.movePosition(QTextCursor.MoveOperation.NextCharacter, move_mode)
-                self.setTextCursor(cursor)
-                event.accept()
-                return
-            elif key == Qt.Key.Key_Up:
-                # Up arrow in vertical text = move to previous character
-                cursor = self.textCursor()
-                move_mode = QTextCursor.MoveMode.KeepAnchor if (modifiers & Qt.KeyboardModifier.ShiftModifier) else QTextCursor.MoveMode.MoveAnchor
-                cursor.movePosition(QTextCursor.MoveOperation.PreviousCharacter, move_mode)
-                self.setTextCursor(cursor)
-                event.accept()
-                return
-            elif key in (Qt.Key.Key_Left, Qt.Key.Key_Right) and not (
-                modifiers & (
-                    Qt.KeyboardModifier.ControlModifier
-                    | Qt.KeyboardModifier.AltModifier
-                    | Qt.KeyboardModifier.MetaModifier
-                )
-            ):
-                # Left/Right arrow in vertical text = move between paragraphs (visual columns),
-                # keeping the same in-block offset when possible.
-                cursor = self.textCursor()
-                move_mode = QTextCursor.MoveMode.KeepAnchor if (modifiers & Qt.KeyboardModifier.ShiftModifier) else QTextCursor.MoveMode.MoveAnchor
-
-                # Prefer layout-aware movement (handles wrapped columns).
-                if self.layout and hasattr(self.layout, "move_cursor_between_columns"):
-                    column_delta = 1 if key == Qt.Key.Key_Left else -1
-                    new_pos = self.layout.move_cursor_between_columns(cursor.position(), column_delta)
-                    if new_pos is not None and new_pos != cursor.position():
-                        cursor.setPosition(new_pos, move_mode)
-                        self.setTextCursor(cursor)
-                        event.accept()
-                        return
-
-                # Fallback: treat each QTextBlock as a vertical "line" and move between them.
-                block = cursor.block()
-                target_block = block.next() if key == Qt.Key.Key_Left else block.previous()
-                if target_block.isValid():
-                    offset_in_block = cursor.position() - block.position()
-                    target_offset = min(offset_in_block, max(0, target_block.length() - 1))
-                    new_pos = target_block.position() + target_offset
-                    if new_pos != cursor.position():
-                        cursor.setPosition(new_pos, move_mode)
-                        self.setTextCursor(cursor)
-                        event.accept()
-                        return
-            
-            elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-                # Use the current character format as the new block's char format so empty paragraphs
-                # keep the same font metrics (Qt can otherwise fall back to a tiny default).
-                # Currently only necessary for vertical text layouts.
-                cursor = self.textCursor()
-                inherited_char_format = QTextCharFormat(cursor.charFormat())
-                inherited_block_format = cursor.blockFormat()
-                inherited_block_char_format = QTextCharFormat(inherited_char_format)
-
-                # Ensure we always carry a valid point size/font for layout metrics.
-                if inherited_block_char_format.fontPointSize() <= 0:
-                    inherited_block_char_format.setFontPointSize(max(1, float(self.font_size)))
-                font = inherited_block_char_format.font()
-                if font.pointSizeF() <= 0:
-                    font = self.document().defaultFont()
-                    if font.pointSizeF() <= 0:
-                        font.setPointSizeF(max(1.0, float(self.font_size)))
-                    inherited_block_char_format.setFont(font)
-
-                cursor.beginEditBlock()
-                if cursor.hasSelection():
-                    cursor.removeSelectedText()
-
-                # Create a new paragraph that keeps the current paragraph + char formatting.
-                cursor.insertBlock(inherited_block_format, inherited_block_char_format)
-                cursor.setCharFormat(inherited_char_format)
-
-                cursor.endEditBlock()
-                self.setTextCursor(cursor)
-                event.accept()
-                return
-        
-        # Default handling for all other cases
-        super().keyPressEvent(event)
 
     def enter_editing_mode(self):
         self.editing_mode = True
@@ -618,29 +420,8 @@ class TextBlockItem(QGraphicsTextItem):
 
     def mouseMoveEvent(self, event):
         # Resize/rotate/move logic is now handled by EventHandler and QGraphicsView
-        if self.editing_mode and self.layout and (event.buttons() & Qt.MouseButton.LeftButton) and self._drag_selecting:
-            hit = self.layout.hitTest(event.pos(), None)
-            anchor = self._drag_select_anchor
-            if anchor is None:
-                anchor = self.textCursor().anchor()
-
-            cursor = self.textCursor()
-            cursor.setPosition(anchor)
-            cursor.setPosition(hit, QTextCursor.MoveMode.KeepAnchor)
-            self.setTextCursor(cursor)
-            event.accept()
-            return
-
         if self.editing_mode:
             super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        if self.editing_mode and self.layout and event.button() == Qt.MouseButton.LeftButton:
-            self._drag_selecting = False
-            self._drag_select_anchor = None
-            event.accept()
-            return
-        super().mouseReleaseEvent(event)
 
     def contextMenuEvent(self, event):
         super().contextMenuEvent(event)
@@ -780,23 +561,23 @@ class TextBlockItem(QGraphicsTextItem):
         new_pos = self.pos() + pos_delta
 
         self.setPos(new_pos)
+        
+        # Update size and font
+        self.setTextWidth(new_rect.width())
 
-        if self.vertical:
-            if self.layout:
-                self.layout.set_max_size(new_rect.width(), new_rect.height())
-        else: # Horizontal logic
-            self.setTextWidth(new_rect.width())
-            if original_height > 0:
-                height_ratio = new_rect.height() / original_height
-                if height_ratio > 0:
-                    new_font_size = self.font_size * height_ratio
-                    # Ensure minimum font size of 1pt.
-                    if new_font_size >= 1:
-                        self.font_size = new_font_size
-                        self.set_font_size(new_font_size)
-                    else:
-                        # If font would become invalid, stop the resize.
-                        return
+        # Update the font size proportionally with minimum size constraint.
+        if original_height > 0:
+            height_ratio = new_rect.height() / original_height
+            new_font_size = self.font_size * height_ratio
+            
+            # Ensure minimum font size of 1pt.
+            min_font_size = 1
+            if new_font_size >= min_font_size:
+                self.font_size = new_font_size
+                self.set_font_size(new_font_size)
+            else:
+                # If font would become invalid, stop the resize.
+                return
 
         self.resize_start = scene_pos
 

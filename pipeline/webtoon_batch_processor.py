@@ -1,33 +1,29 @@
 import os
+import json
 import shutil
 import logging
 import requests
+import traceback
 import numpy as np
 import imkit as imk
-from types import SimpleNamespace
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
-from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QColor
 
 from modules.detection.processor import TextBlockDetector
 from modules.translation.processor import Translator
 from modules.utils.textblock import sort_blk_list, TextBlock
-from modules.utils.pipeline_config import inpaint_map, get_config
-from modules.utils.image_utils import generate_mask, get_smart_text_color
-from modules.utils.language_utils import get_language_code, is_no_space_lang
-from modules.utils.common_utils import is_directory_empty
+from modules.utils.pipeline_utils import inpaint_map, get_config, generate_mask, \
+    get_language_code, is_directory_empty, get_smart_text_color
 from modules.utils.translator_utils import format_translations
-from modules.rendering.render import is_vertical_block
-from modules.utils.archives import make, resolve_save_as_ext
+from modules.utils.archives import make
 from modules.rendering.render import get_best_render_area, pyside_word_wrap
 from app.ui.canvas.text_item import OutlineInfo, OutlineType
 from app.ui.canvas.text.text_item_properties import TextItemProperties
 from app.ui.canvas.save_renderer import ImageSaveRenderer
 from modules.utils.translator_utils import format_translations, get_raw_text, get_raw_translation 
 from modules.utils.device import resolve_device
-from modules.utils.exceptions import InsufficientCreditsException
 from .virtual_page import VirtualPage, VirtualPageCreator, PageStatus
 
 logger = logging.getLogger(__name__)
@@ -77,10 +73,6 @@ class WebtoonBatchProcessor:
         self.edge_threshold = 50  # pixels from edge to consider as "near edge"
         
     def skip_save(self, directory, timestamp, base_name, extension, archive_bname, image):
-        export_settings = self.main_page.settings_page.get_export_settings()
-        if not export_settings.get('auto_save', True):
-            logger.info("Auto-save is OFF. Skipping fallback image save for '%s'.", base_name)
-            return
         path = os.path.join(directory, f"comic_translate_{timestamp}", "translated_images", archive_bname)
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
@@ -283,12 +275,8 @@ class WebtoonBatchProcessor:
                 source_lang_english = self.main_page.lang_mapping.get(source_lang, source_lang)
                 rtl = True if source_lang_english == 'Japanese' else False
                 blk_list = sort_blk_list(blk_list, rtl)
-            except InsufficientCreditsException:
-                raise
             except Exception as e:
-                if isinstance(e, requests.exceptions.ConnectionError):
-                    err_msg = QCoreApplication.translate("Messages", "Unable to connect to the server.\nPlease check your internet connection.")
-                elif isinstance(e, requests.exceptions.HTTPError):
+                if isinstance(e, requests.exceptions.HTTPError):
                     try:
                         err_msg = e.response.json().get("error_description", str(e))
                     except Exception:
@@ -342,9 +330,8 @@ class WebtoonBatchProcessor:
         if self.main_page.current_worker and self.main_page.current_worker.is_cancelled:
             return None
 
-        # Note: get_best_render_area is applied later per-virtual-page (after merge/dedup)
-        # in _emit_and_store_virtual_page_results, so it affects live rendering, saved state,
-        # and the final physical render.
+        # if blk_list:
+        #     get_best_render_area(blk_list, combined_image, inpaint_input_img)
 
         # Progress update: Pre-translation setup completed
         self.main_page.progress_update.emit(current_physical_page, total_images, 6, 10, False)
@@ -358,12 +345,8 @@ class WebtoonBatchProcessor:
             translator = Translator(self.main_page, source_lang, target_lang)
             try:
                 translator.translate(blk_list, combined_image, extra_context)
-            except InsufficientCreditsException:
-                raise
             except Exception as e:
-                if isinstance(e, requests.exceptions.ConnectionError):
-                    err_msg = QCoreApplication.translate("Messages", "Unable to connect to the server.\nPlease check your internet connection.")
-                elif isinstance(e, requests.exceptions.HTTPError):
+                if isinstance(e, requests.exceptions.HTTPError):
                     try:
                         err_msg = e.response.json().get("error_description", str(e))
                     except Exception:
@@ -697,7 +680,7 @@ class WebtoonBatchProcessor:
         format_translations(final_blocks, trg_lng_cd, upper_case=render_settings.upper_case)
 
         # Language-specific formatting 
-        if is_no_space_lang(trg_lng_cd):
+        if any(lang in trg_lng_cd.lower() for lang in ['zh', 'ja', 'th']):
             for blk in final_blocks:
                 if blk.translation:
                     blk.translation = blk.translation.replace(' ', '')
@@ -739,8 +722,7 @@ class WebtoonBatchProcessor:
         font, font_color = render_settings.font_family, QColor(render_settings.color)
         max_font_size, min_font_size = render_settings.max_font_size, render_settings.min_font_size
         line_spacing, outline_width = float(render_settings.line_spacing), float(render_settings.outline_width)
-        outline = render_settings.outline
-        outline_color = QColor(render_settings.outline_color) if outline else None
+        outline_color, outline = QColor(render_settings.outline_color), render_settings.outline
         bold, italic, underline = render_settings.bold, render_settings.italic, render_settings.underline
         alignment = self.main_page.button_to_alignment[render_settings.alignment_id]
         direction = render_settings.direction
@@ -754,12 +736,6 @@ class WebtoonBatchProcessor:
         if webtoon_manager and vpage.physical_page_index < len(webtoon_manager.image_positions):
             page_y_position_in_scene = webtoon_manager.image_positions[vpage.physical_page_index]
 
-        # Ensure blocks use the best (bubble-aware) render bounds in VIRTUAL coordinates.
-        # This is the single correct place to do it in webtoon mode: after merge/dedup and
-        # before wrapping + state creation.
-        virtual_img = SimpleNamespace(shape=(vpage.crop_height, vpage.physical_width, 3))
-        get_best_render_area(blk_list_virtual, virtual_img)
-
         # Process each block
         for blk_virtual in blk_list_virtual:
             physical_coords = vpage.virtual_to_physical_coords(blk_virtual.xyxy)
@@ -770,27 +746,11 @@ class WebtoonBatchProcessor:
             if not translation or len(translation) < 1:
                 continue
 
-            # Determine if this block should use vertical rendering
-            vertical = is_vertical_block(blk_virtual, trg_lng_cd)
-
-            translation, font_size = pyside_word_wrap(
-                translation, 
-                font, 
-                width, 
-                height,
-                line_spacing, 
-                outline_width, 
-                bold, 
-                italic, 
-                underline,
-                alignment, 
-                direction, 
-                max_font_size, 
-                min_font_size,
-                vertical
-            )
+            translation, font_size = pyside_word_wrap(translation, font, width, height,
+                                                      line_spacing, outline_width, bold, italic, underline,
+                                                      alignment, direction, max_font_size, min_font_size)
             
-            if is_no_space_lang(trg_lng_cd):
+            if any(lang in trg_lng_cd.lower() for lang in ['zh', 'ja', 'th']):
                 translation = translation.replace(' ', '')
 
             # Smart Color Override
@@ -811,7 +771,7 @@ class WebtoonBatchProcessor:
             render_blk.translation = translation
 
             if should_emit_live:
-                self.main_page.blk_rendered.emit(translation, font_size, render_blk, image_path)
+                self.main_page.blk_rendered.emit(translation, font_size, render_blk)
                 self.main_page.blk_list.append(render_blk)
 
             # Store for final save (always do this)
@@ -836,7 +796,6 @@ class WebtoonBatchProcessor:
                 transform_origin=blk_virtual.tr_origin_point if blk_virtual.tr_origin_point else (0, 0),
                 width=width,
                 direction=direction,
-                vertical=vertical,
                 selection_outlines=[
                     OutlineInfo(
                         0, 
@@ -986,20 +945,39 @@ class WebtoonBatchProcessor:
             with open(os.path.join(path, f"{base_name}_translated.txt"), 'w', encoding='UTF-8') as f:
                 f.write(translated_text)
 
+        # Export Detailed Web JSON
+        if export_settings['export_web_json']:
+            path = os.path.join(directory, f"comic_translate_{timestamp}", "web_json", archive_bname)
+            if not os.path.exists(path):
+                os.makedirs(path, exist_ok=True)
+            
+            # Get image dimensions
+            h, w = image.shape[:2]
+            
+            # Need to collect blocks from current viewer state
+            viewer_state = self.main_page.image_states[image_path].get('viewer_state', {})
+            text_items_state = viewer_state.get('text_items_state', [])
+            
+            web_data = {
+                'image_path': os.path.basename(image_path),
+                'width': w,
+                'height': h,
+                'blocks': text_items_state # Already serialized
+            }
+            
+            json_path = os.path.join(path, f"{base_name}.json")
+            with open(json_path, 'w', encoding='UTF-8') as f:
+                json.dump(web_data, f, ensure_ascii=False, indent=2)
+
         # Continue Image Rendering
         viewer_state = self.main_page.image_states[image_path].get('viewer_state', {}).copy()
         renderer.add_state_to_image(viewer_state, page_idx, self.main_page)
-        
-        # Conditional Save: Final Rendered Image (controlled by auto_save)
-        if export_settings['auto_save']:
-            render_save_dir = os.path.join(directory, f"comic_translate_{timestamp}", "translated_images", archive_bname)
-            if not os.path.exists(render_save_dir):
-                os.makedirs(render_save_dir, exist_ok=True)
-            sv_pth = os.path.join(render_save_dir, f"{base_name}_translated{extension}")
-            renderer.save_image(sv_pth)
-            logger.info(f"Saved final rendered page: {sv_pth}")
-        else:
-            logger.info(f"Auto-save is OFF. Skipping final image save for page {page_idx}.")
+        render_save_dir = os.path.join(directory, f"comic_translate_{timestamp}", "translated_images", archive_bname)
+        if not os.path.exists(render_save_dir):
+            os.makedirs(render_save_dir, exist_ok=True)
+        sv_pth = os.path.join(render_save_dir, f"{base_name}_translated{extension}")
+        renderer.save_image(sv_pth)
+        logger.info(f"Saved final rendered page: {sv_pth}")
 
     def webtoon_batch_process(self, selected_paths: List[str] = None):
         """
@@ -1142,14 +1120,6 @@ class WebtoonBatchProcessor:
                             logger.info(f"All live data for physical page {p_idx} is now finalized.")
                             self.physical_page_status[p_idx] = PageStatus.LIVE_DATA_FINALIZED
                             newly_finalized_physical_pages.add(p_idx)
-                            # Keep regular-mode current page in sync when users switch
-                            # out of webtoon mode mid-batch.
-                            image_path = image_list[p_idx]
-                            page_state = self.main_page.image_states.get(image_path)
-                            if page_state is not None:
-                                viewer_state = page_state.setdefault('viewer_state', {})
-                                viewer_state['push_to_stack'] = True
-                            self.main_page.render_state_ready.emit(image_path)
 
             # Trigger Render Check for newly finalized pages and their neighbors
             pages_to_check_for_render = set(newly_finalized_physical_pages)
@@ -1178,12 +1148,8 @@ class WebtoonBatchProcessor:
 
         # Step 4: Handle archive creation
         archive_info_list = self.main_page.file_handler.archive_info
-        # Conditional Save: Archives (controlled by auto_save)
-        # Note: We also need to fetch the setting here since webtoon_batch_process is the entry point
-        auto_save = self.main_page.settings_page.get_export_settings()['auto_save']
-        
-        if archive_info_list and auto_save:
-            archive_save_as = self.main_page.settings_page.get_export_settings().get('archive_save_as')
+        if archive_info_list:
+            save_as_settings = self.main_page.settings_page.get_export_settings()['save_as']
             for archive_index, archive in enumerate(archive_info_list):
                 archive_index_input = total_images + archive_index
 
@@ -1196,7 +1162,7 @@ class WebtoonBatchProcessor:
                 archive_bname = os.path.splitext(os.path.basename(archive_path))[0].strip()
                 archive_directory = os.path.dirname(archive_path)
                 archive_ext = os.path.splitext(archive_path)[1]
-                save_as_ext = resolve_save_as_ext(archive_ext, archive_save_as)
+                save_as_ext = f".{save_as_settings.get(archive_ext.lower(), 'cbz')}"
 
                 save_dir = os.path.join(archive_directory, f"comic_translate_{timestamp}", "translated_images", archive_bname)
                 check_from = os.path.join(archive_directory, f"comic_translate_{timestamp}")

@@ -6,7 +6,7 @@
     background-color: @background_color;
     font-size: @font_size_base@font_unit;
     selection-color: @text_color_inverse;
-    selection-background-color: #3b82f6;
+    selection-background-color: @primary_color;
 }
 MDateTimeEdit::drop-down,
 MDateEdit::drop-down,
@@ -1286,7 +1286,7 @@ MDockWidget::close-button:hover, MDockWidget::float-button:hover {
 }
 
 MProgressBar {
-    font-size: @font_size_small@font_unit;
+    font-size: @font_size_base@font_unit;
     color: @primary_text_color;
     border: 0 solid @border_color;
     background-color: @border_color;

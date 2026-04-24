@@ -8,7 +8,7 @@ import torch
 
 from modules.ocr.base import OCREngine
 from modules.utils.textblock import TextBlock, adjust_text_line_coordinates
-from modules.utils.download import ModelDownloader, ModelID, models_base_dir
+from modules.utils.download import ModelDownloader, ModelID
 
 
 class MangaOCREngine(OCREngine):
@@ -18,6 +18,8 @@ class MangaOCREngine(OCREngine):
         self.model = None
         self.device = 'cpu'
         self.expansion_percentage = 5
+        self.current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        self.project_root = os.path.abspath(os.path.join(self.current_file_dir, '..', '..', '..'))
         
     def initialize(self, device: str = 'cpu', expansion_percentage: int = 5) -> None:
         """
@@ -32,7 +34,7 @@ class MangaOCREngine(OCREngine):
         self.expansion_percentage = expansion_percentage
         if self.model is None:
             ModelDownloader.get(ModelID.MANGA_OCR_BASE)
-            manga_ocr_path = os.path.join(models_base_dir, 'ocr', 'manga-ocr-base')
+            manga_ocr_path = os.path.join(self.project_root, 'models/ocr/manga-ocr-base')
             self.model = MangaOcr(pretrained_model_name_or_path=manga_ocr_path, device=device)
         
     def process_image(self, img: np.ndarray, blk_list: list[TextBlock]) -> list[TextBlock]:
@@ -61,8 +63,10 @@ class MangaOCREngine(OCREngine):
 
 
 # modified from https://github.com/kha-white/manga-ocr/blob/master/manga_ocr/ocr.py
-# modified from https://github.com/kha-white/manga-ocr/blob/master/manga_ocr/ocr.py
-manga_ocr_path = os.path.join(models_base_dir, 'ocr', 'manga-ocr-base')
+
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_file_dir, '..', '..', '..'))
+manga_ocr_path = os.path.join(project_root, 'models', 'ocr', 'manga-ocr-base')
 
 
 class MangaOcrModel(VisionEncoderDecoderModel, GenerationMixin):

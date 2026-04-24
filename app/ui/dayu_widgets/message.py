@@ -14,7 +14,6 @@ from __future__ import print_function
 # Import third-party modules
 from PySide6 import QtCore
 from PySide6 import QtWidgets
-from PySide6 import QtGui
 
 # Import local modules
 from . import dayu_theme
@@ -38,7 +37,6 @@ class MMessage(QtWidgets.QWidget):
     def __init__(self, text, duration=None, dayu_type=None, closable=False, parent=None):
         super(MMessage, self).__init__(parent)
         self.setObjectName("message")
-        self._sig_closed_emitted = False
         self.setWindowFlags(
             QtCore.Qt.WindowType.FramelessWindowHint
             | QtCore.Qt.WindowType.Dialog
@@ -60,20 +58,6 @@ class MMessage(QtWidgets.QWidget):
             )
 
         self._content_label = MLabel(parent=self)
-
-        # Measure natural (unwrapped) text width across all lines; if it exceeds
-        # the max, enable word wrap.  QFontMetrics.horizontalAdvance() stops at
-        # the first '\n', so we must check each line individually.
-        _max_message_width = 700
-        _fm = self._content_label.fontMetrics()
-        _natural_width = max(
-            (_fm.horizontalAdvance(line) for line in text.splitlines()),
-            default=0,
-        )
-        if _natural_width > _max_message_width:
-            self._content_label.setWordWrap(True)
-            self._content_label.setFixedWidth(_max_message_width)
-
         self._content_label.setText(text)
 
         self._close_button = MToolButton(parent=self).icon_only().svg("close_line.svg").tiny()
@@ -91,6 +75,7 @@ class MMessage(QtWidgets.QWidget):
             _close_timer = QtCore.QTimer(self)
             _close_timer.setSingleShot(True)
             _close_timer.timeout.connect(self.close)
+            _close_timer.timeout.connect(self.sig_closed)
             _close_timer.setInterval(duration * 1000)
 
             _ani_timer = QtCore.QTimer(self)
@@ -117,12 +102,6 @@ class MMessage(QtWidgets.QWidget):
         self._set_proper_position(parent)
         self._fade_int()
 
-    def closeEvent(self, event):
-        if not self._sig_closed_emitted:
-            self._sig_closed_emitted = True
-            self.sig_closed.emit()
-        super(MMessage, self).closeEvent(event)
-
     def _fade_out(self):
         self._pos_ani.setDirection(QtCore.QAbstractAnimation.Backward)
         self._pos_ani.start()
@@ -148,7 +127,7 @@ class MMessage(QtWidgets.QWidget):
             if isinstance(child, MMessage) and child.isVisible():
                 offset = max(offset, child.y())
         base = pos.y() + MMessage.default_config.get("top")
-        target_x = pos.x() + parent_geo.width() / 2 - self.sizeHint().width() / 2
+        target_x = pos.x() + parent_geo.width() / 2 - 100
         target_y = (offset + 50) if offset else base
         self._pos_ani.setStartValue(QtCore.QPoint(target_x, target_y - 40))
         self._pos_ani.setEndValue(QtCore.QPoint(target_x, target_y))

@@ -2,6 +2,7 @@ import json
 import hashlib
 
 from .base import TranslationEngine
+from .google import GoogleTranslation
 from .microsoft import MicrosoftTranslation
 from .deepl import DeepLTranslation
 from .yandex import YandexTranslation
@@ -10,8 +11,7 @@ from .llm.claude import ClaudeTranslation
 from .llm.gemini import GeminiTranslation
 from .llm.deepseek import DeepseekTranslation
 from .llm.custom import CustomTranslation
-from .user import UserTranslator
-from app.account.auth.token_storage import get_token
+from .deelx import DeeLXTranslation
 
 
 class TranslationFactory:
@@ -21,9 +21,11 @@ class TranslationFactory:
     
     # Map traditional translation services to their engine classes
     TRADITIONAL_ENGINES = {
+        "Google Translate": GoogleTranslation,
         "Microsoft Translator": MicrosoftTranslation,
         "DeepL": DeepLTranslation,
-        "Yandex": YandexTranslation
+        "Yandex": YandexTranslation,
+        "DeeLX": DeeLXTranslation
     }
     
     # Map LLM identifiers to their engine classes
@@ -35,6 +37,8 @@ class TranslationFactory:
         "Custom": CustomTranslation
     }
     
+    # Default engines for fallback
+    DEFAULT_TRADITIONAL_ENGINE = GoogleTranslation
     DEFAULT_LLM_ENGINE = GPTTranslation
     
     @classmethod
@@ -63,24 +67,18 @@ class TranslationFactory:
         engine = engine_class()
         
         # Initialize with appropriate parameters
-        if translator_key not in cls.TRADITIONAL_ENGINES or isinstance(engine, UserTranslator):
-            engine.initialize(settings, source_lang, target_lang, translator_key)
-        else:
+        if translator_key in cls.TRADITIONAL_ENGINES:
             engine.initialize(settings, source_lang, target_lang)
+        else:
+            engine.initialize(settings, source_lang, target_lang, translator_key)
         
         # Cache the engine
         cls._engines[cache_key] = engine
         return engine
     
-
     @classmethod
     def _get_engine_class(cls, translator_key: str):
         """Get the appropriate engine class based on translator key."""
-
-        access_token = get_token("access_token")
-        if access_token and translator_key not in ['Custom']:
-            return UserTranslator
-
         # First check if it's a traditional translation engine (exact match)
         if translator_key in cls.TRADITIONAL_ENGINES:
             return cls.TRADITIONAL_ENGINES[translator_key]

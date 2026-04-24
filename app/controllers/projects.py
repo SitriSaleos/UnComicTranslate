@@ -64,6 +64,36 @@ class ProjectController:
                     })()
 
                     renderer.apply_patches(self.main.image_patches.get(file_path, []))
+                    
+                    # Export Detailed Web JSON if requested
+                    export_settings = self.main.settings_page.get_export_settings()
+                    if export_settings.get('export_web_json'):
+                        web_json_dir = os.path.join(temp_dir, 'web_json')
+                        os.makedirs(web_json_dir, exist_ok=True)
+                        h, w = rgb_img.shape[:2]
+                        
+                        serializable_blocks = []
+                        for b in viewer_state.get('text_items_state', []):
+                            sb = b.copy()
+                            for key in ['text_color', 'outline_color']:
+                                if sb.get(key) and hasattr(sb[key], 'name'):
+                                    sb[key] = sb[key].name()
+                            for key in ['alignment', 'direction']:
+                                if hasattr(sb.get(key), 'value'):
+                                    sb[key] = sb[key].value
+                            serializable_blocks.append(sb)
+
+                        web_data = {
+                            'image_path': bname,
+                            'width': w,
+                            'height': h,
+                            'blocks': serializable_blocks
+                        }
+                        json_path = os.path.join(web_json_dir, f"{os.path.splitext(bname)[0]}.json")
+                        import json
+                        with open(json_path, 'w', encoding='UTF-8') as f:
+                            json.dump(web_data, f, ensure_ascii=False, indent=2)
+
                     renderer.add_state_to_image(viewer_state, page_idx, temp_main_page_context)
                     sv_pth = os.path.join(temp_dir, bname)
                     renderer.save_image(sv_pth)
@@ -76,6 +106,36 @@ class ProjectController:
                     renderer = ImageSaveRenderer(rgb_img)
                     viewer_state = self.main.image_states[file_path]['viewer_state']
                     renderer.apply_patches(self.main.image_patches.get(file_path, []))
+                    
+                    # Export Detailed Web JSON if requested
+                    export_settings = self.main.settings_page.get_export_settings()
+                    if export_settings.get('export_web_json'):
+                        web_json_dir = os.path.join(temp_dir, 'web_json')
+                        os.makedirs(web_json_dir, exist_ok=True)
+                        h, w = rgb_img.shape[:2]
+                        
+                        serializable_blocks = []
+                        for b in viewer_state.get('text_items_state', []):
+                            sb = b.copy()
+                            for key in ['text_color', 'outline_color']:
+                                if sb.get(key) and hasattr(sb[key], 'name'):
+                                    sb[key] = sb[key].name()
+                            for key in ['alignment', 'direction']:
+                                if hasattr(sb.get(key), 'value'):
+                                    sb[key] = sb[key].value
+                            serializable_blocks.append(sb)
+
+                        web_data = {
+                            'image_path': bname,
+                            'width': w,
+                            'height': h,
+                            'blocks': serializable_blocks
+                        }
+                        json_path = os.path.join(web_json_dir, f"{os.path.splitext(bname)[0]}.json")
+                        import json
+                        with open(json_path, 'w', encoding='UTF-8') as f:
+                            json.dump(web_data, f, ensure_ascii=False, indent=2)
+
                     renderer.add_state_to_image(viewer_state)
                     sv_pth = os.path.join(temp_dir, bname)
                     renderer.save_image(sv_pth)
@@ -143,25 +203,12 @@ class ProjectController:
 
         return file_name
 
-    def run_save_proj(self, file_name, post_save_callback=None):
+    def run_save_proj(self, file_name):
         self.main.project_file = file_name
-        self.main.setWindowTitle(f"{os.path.basename(file_name)}[*]")
         self.main.loading.setVisible(True)
         self.main.disable_hbutton_group()
-        save_failed = {'value': False}
-
-        def on_error(error_tuple):
-            save_failed['value'] = True
-            self.main.default_error_handler(error_tuple)
-
-        def on_finished():
-            self.main.on_manual_finished()
-            if not save_failed['value']:
-                self.main.set_project_clean()
-                if post_save_callback:
-                    post_save_callback()
-
-        self.main.run_threaded(self.save_project, None, on_error, on_finished, file_name)
+        self.main.run_threaded(self.save_project, None,
+                                self.main.default_error_handler, self.main.on_manual_finished, file_name)
         
     def save_current_state(self):
         if self.main.webtoon_mode:
@@ -171,7 +218,7 @@ class ProjectController:
         else:
             self.main.image_ctrl.save_current_image_state()
 
-    def thread_save_project(self, post_save_callback=None) -> bool:
+    def thread_save_project(self):
         file_name = ""
         self.save_current_state()
         if self.main.project_file:
@@ -180,17 +227,13 @@ class ProjectController:
             file_name = self.launch_save_proj_dialog()
 
         if file_name:
-            self.run_save_proj(file_name, post_save_callback)
-            return True
-        return False
+            self.run_save_proj(file_name)
 
-    def thread_save_as_project(self, post_save_callback=None) -> bool:
+    def thread_save_as_project(self):
         file_name = self.launch_save_proj_dialog()
         if file_name:
             self.save_current_state()
-            self.run_save_proj(file_name, post_save_callback)
-            return True
-        return False
+            self.run_save_proj(file_name)
 
     def save_project(self, file_name):
         save_state_to_proj_file(self.main, file_name)
@@ -208,7 +251,6 @@ class ProjectController:
 
         for file in self.main.image_files:
             stack = QUndoStack(self.main)
-            stack.cleanChanged.connect(self.main._update_window_modified)
             self.main.undo_stacks[file] = stack
             self.main.undo_group.addStack(stack)
 
@@ -227,11 +269,9 @@ class ProjectController:
         if self.main.webtoon_mode:
             self.main.webtoon_toggle.setChecked(True)
             self.main.webtoon_ctrl.switch_to_webtoon_mode()
-        self.main.set_project_clean()
 
-    def thread_load_project(self, file_name: str):
+    def thread_load_project(self, file_name):
         self.main.image_ctrl.clear_state()
-        self.main.setWindowTitle(f"{os.path.basename(file_name)}[*]")
         self.main.run_threaded(
             self.load_project, 
             self.load_state_to_ui,
@@ -248,7 +288,7 @@ class ProjectController:
         self.main.settings_page.ui.extra_context.setPlainText(saved_ctx)
 
     def save_main_page_settings(self):
-        settings = QSettings("ComicLabs", "ComicTranslate")
+        settings = QSettings("UnComicLabs", "UnComicTranslate")
 
         self.process_group('text_rendering', self.main.render_settings(), settings)
 
@@ -272,7 +312,7 @@ class ProjectController:
         settings.endGroup()
 
     def load_main_page_settings(self):
-        settings = QSettings("ComicLabs", "ComicTranslate")
+        settings = QSettings("UnComicLabs", "UnComicTranslate")
         settings.beginGroup("main_page")
 
         # Load languages and convert back to current language
@@ -350,4 +390,64 @@ class ProjectController:
             # Convert value to English using mappings if available
             mapped_value = self.main.settings_page.ui.value_mappings.get(group_value, group_value)
             settings_obj.setValue(group_key, mapped_value)
+
+    def export_for_web(self):
+        dest_dir = QtWidgets.QFileDialog.getExistingDirectory(self.main, self.main.tr("Select Export Directory"))
+        if not dest_dir:
+            return
+        
+        self.main.progress_bar.setVisible(True)
+        self.main.run_threaded(self.export_for_web_worker, None, self.main.default_error_handler, self.on_web_export_finished, dest_dir)
+
+    def on_web_export_finished(self, result):
+        self.main.progress_bar.setVisible(False)
+        MMessage.success(self.main.tr("Web export finished!"), parent=self.main)
+
+    def export_for_web_worker(self, dest_dir: str):
+        self.main.image_ctrl.save_current_image_state()
+        
+        images_dir = os.path.join(dest_dir, "images")
+        json_dir = os.path.join(dest_dir, "json")
+        os.makedirs(images_dir, exist_ok=True)
+        os.makedirs(json_dir, exist_ok=True)
+
+        for page_idx, file_path in enumerate(self.main.image_files):
+            # Update progress with filename
+            self.main.progress_update.emit(page_idx, len(self.main.image_files), 0, 10, True)
+            
+            bname = os.path.basename(file_path)
+            rgb_img = self.main.load_image(file_path)
+            h, w = rgb_img.shape[:2]
+
+            # Get state
+            if self.main.webtoon_mode and page_idx in self.main.image_viewer.webtoon_manager.loaded_pages:
+                viewer_state = self._create_text_items_state_from_scene(page_idx)
+            else:
+                viewer_state = self.main.image_states[file_path].get('viewer_state', {}).copy()
+
+            # Save Clean Image (Inpainted)
+            self.main.progress_update.emit(page_idx, len(self.main.image_files), 5, 10, False)
+            renderer = ImageSaveRenderer(rgb_img)
+            renderer.apply_patches(self.main.image_patches.get(file_path, []))
+            # We DON'T call add_state_to_image here because we want clean images
+            sv_pth = os.path.join(images_dir, bname)
+            renderer.save_image(sv_pth)
+
+            # Save Detailed JSON
+            self.main.progress_update.emit(page_idx, len(self.main.image_files), 8, 10, False)
+            # text_items_state is already serialized via TextItemProperties.to_dict()
+            serializable_blocks = viewer_state.get('text_items_state', [])
+
+            web_data = {
+                'image_path': bname,
+                'width': w,
+                'height': h,
+                'blocks': serializable_blocks
+            }
+            json_path = os.path.join(json_dir, f"{os.path.splitext(bname)[0]}.json")
+            import json
+            with open(json_path, 'w', encoding='UTF-8') as f:
+                json.dump(web_data, f, ensure_ascii=False, indent=2)
+
+        self.main.progress_update.emit(len(self.main.image_files), len(self.main.image_files), 10, 10, False)
 

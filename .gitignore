@@ -15,10 +15,10 @@ venv/
 
 # uv
 .python-version
-pyproject.toml
-uv.lock
 
 # Test files
 test_*.py
 demo_*.py
 models/
+# Test folders
+test/*

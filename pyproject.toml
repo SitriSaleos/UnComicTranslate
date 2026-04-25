@@ -1,0 +1,32 @@
+[project]
+name = "UnComicTranslate"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-vision-imageanalysis>=1.0.0b1",
+    "deep-translator>=1.11.4",
+    "deepl>=1.16.1",
+    "huggingface-hub>=0.34.4",
+    "img2pdf>=0.5.1",
+    "jaconv>=0.3.4",
+    "janome>=0.5.0",
+    "jieba>=0.42.1",
+    "mahotas>=1.4.18",
+    "msgpack>=1.1.0",
+    "numpy>=2.2.6",
+    "onnxruntime>=1.22.1",
+    "pdfplumber>=0.11.5",
+    "pillow>=11.0.0",
+    "py7zr>=0.20.8",
+    "pyclipper>=1.3.0.post6",
+    "pyside6>=6.8.0",
+    "pythainlp>=5.1.2",
+    "rarfile>=4.1",
+    "requests>=2.31.0",
+    "setuptools>=82.0.1",
+    "shapely>=2.1.1",
+    "six>=1.16.0",
+    "wget>=3.2",
+]

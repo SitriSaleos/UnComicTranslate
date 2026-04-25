@@ -1,7 +1,16 @@
-# Comic Translate
+# UnComicTranslate
 English | [한국어](docs/README_ko.md) | [Français](docs/README_fr.md) | [简体中文](docs/README_zh-CN.md) | [日本語](docs/README_ja.md) | [Português Brasileiro](docs/README_pt-BR.md)
 
 <img src="https://i.imgur.com/QUVK6mK.png">
+
+## About this Fork
+**UnComicTranslate** is a fork of the original [comic-translate](https://github.com/ogkalu2/comic-translate) project by ogkalu2. 
+
+We decided to fork this project because we disagree with the new direction of the original repository, which has moved away from providing default access to LLM APIs in favor of a model requiring users to purchase credits or manually input complex configurations.
+
+**Our Mission:**
+- **Open Access:** We believe in keeping the powerful translation capabilities of SOTA LLMs accessible to everyone using their own API keys, without forced credit systems.
+- **Enhanced Features:** We are expanding the project with features that prioritize user flexibility and advanced export options.
 
 ## Intro
 Many Automatic Manga Translators exist. Very few properly support comics of other kinds in other languages. 
@@ -25,6 +34,8 @@ This project was created to utilize the ability of State of the Art (SOTA) Large
     - [Inpainting](#inpainting)
     - [Translation](#translation)
     - [Text Rendering](#text-rendering)
+- [New Features](#new-features)
+    - [Detailed Web Export](#detailed-web-export)
 
 - [Acknowledgements](#acknowledgements)
 
@@ -83,8 +94,8 @@ https://docs.astral.sh/uv/getting-started/installation/
 
 Then, in the command line
 ```bash
-git clone https://github.com/ogkalu2/comic-translate
-cd comic-translate
+git clone https://github.com/SitriSaleos/UnComicTranslate
+cd UnComicTranslate
 uv init --python 3.12
 ```
 and install the requirements
@@ -182,6 +193,13 @@ There is also the Option to provide the Image itself for further context.
 
 ### Text Rendering
 Wrapped text in bounding boxes obtained from bubbles and text.
+
+## New Features
+### Detailed Web Export
+This feature allows you to export your translated projects into a format suitable for high-quality web display. 
+- **Clean Images:** Automatically exports inpainted images without text.
+- **JSON Data:** Provides structured JSON files containing coordinates, original text, and translated text for each block.
+- **Web-Ready:** Perfect for developers looking to build interactive comic viewers or mobile apps.
 
 ## Acknowledgements
 

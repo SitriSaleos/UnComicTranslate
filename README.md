@@ -1,215 +1,151 @@
 # UnComicTranslate
+
 English | [한국어](docs/README_ko.md) | [Français](docs/README_fr.md) | [简体中文](docs/README_zh-CN.md) | [日本語](docs/README_ja.md) | [Português Brasileiro](docs/README_pt-BR.md)
 
-<img src="https://i.imgur.com/QUVK6mK.png">
-
 ## About this Fork
-**UnComicTranslate** is a fork of the original [comic-translate](https://github.com/ogkalu2/comic-translate) project by ogkalu2. 
 
-We decided to fork this project because we disagree with the new direction of the original repository, which has moved away from providing default access to LLM APIs in favor of a model requiring users to purchase credits or manually input complex configurations.
+**UnComicTranslate** is a community-driven fork focused on providing open access to powerful comic translation capabilities using State-of-the-Art (SOTA) Large Language Models.
 
 **Our Mission:**
-- **Open Access:** We believe in keeping the powerful translation capabilities of SOTA LLMs accessible to everyone using their own API keys, without forced credit systems.
-- **Enhanced Features:** We are expanding the project with features that prioritize user flexibility and advanced export options.
+- **Open Access:** Keep translation capabilities accessible to everyone using their own API keys, without forced credit systems
+- **Enhanced Features:** Expand functionality with user flexibility and advanced export options
+- **Community-Driven:** Maintain an active development focused on user needs
 
-## Intro
-Many Automatic Manga Translators exist. Very few properly support comics of other kinds in other languages. 
-This project was created to utilize the ability of State of the Art (SOTA) Large Language Models (LLMs) like GPT-4 and translate comics from all over the world. Currently, it supports translating to and from English, Korean, Japanese, French, Simplified Chinese, Traditional Chinese, Russian, German, Dutch, Spanish and Italian. It can translate to (but not from) Turkish, Polish, Portuguese and Brazillian Portuguese.
+## Overview
 
-- [The State of Machine Translation](#the-state-of-machine-translation)
-- [Preview](#comic-samples)
-- [Getting Started](#installation)
-    - [Installation](#installation)
-        - [Python](#python)
-    - [Usage](#usage)
-        - [Tips](#tips)
-    - [API keys](#api-keys)
-        - [Getting API Keys](#getting-api-keys)
-            - [Open AI](#open-ai-gpt)
-            - [Google Cloud Vision](#google-cloud-vision)
+Automatic comic translation tool supporting multiple languages and LLM providers. Translates to and from English, Korean, Japanese, French, Simplified Chinese, Traditional Chinese, Russian, German, Dutch, Spanish, and Italian. Also supports translation to Turkish, Polish, Portuguese, and Brazilian Portuguese.
 
-- [How it works](#how-it-works)
-    - [Text Detection](#text-detection)
-    - [OCR](#OCR)
-    - [Inpainting](#inpainting)
-    - [Translation](#translation)
-    - [Text Rendering](#text-rendering)
-- [New Features](#new-features)
-    - [Detailed Web Export](#detailed-web-export)
-
+**Table of Contents:**
+- [Installation](#installation)
+- [Usage](#usage)
+- [API Keys](#api-keys)
+- [How It Works](#how-it-works)
+- [Features](#features)
 - [Acknowledgements](#acknowledgements)
 
-## The State of Machine Translation
-For a couple dozen languages, the best Machine Translator is not Google Translate, Papago or even DeepL, but a SOTA LLM like GPT-4o, and by far. 
-This is very apparent for distant language pairs (Korean<->English, Japanese<->English etc) where other translators still often devolve into gibberish.
-Excerpt from "The Walking Practice"(보행 연습) by Dolki Min(돌기민)
-![Model](https://i.imgur.com/72jvLBa.png)
-
-## Comic Samples
-GPT-4 as Translator.
-Note: Some of these also have Official English Translations
-
-[The Wretched of the High Seas](https://www.drakoo.fr/bd/drakoo/les_damnes_du_grand_large/les_damnes_du_grand_large_-_histoire_complete/9782382330128)
-
-<img src="https://i.imgur.com/75HwK4r.jpg" width="49%"> <img src="https://i.imgur.com/3oRt5fX.jpg" width="49%">
-
-[Journey to the West](https://ac.qq.com/Comic/comicInfo/id/541812)
-
-<img src="https://i.imgur.com/zk7yiKe.jpg" width="49%"> <img src="https://i.imgur.com/4ycSi8j.jpg" width="49%">
-
-[The Wormworld Saga](https://wormworldsaga.com/index.php)
-
-<img src="https://i.imgur.com/cVVGVXp.jpg" width="49%"> <img src="https://i.imgur.com/SSl81sb.jpg" width="49%">
-
-[Frieren: Beyond Journey's End](https://renta.papy.co.jp/renta/sc/frm/item/220775/title/742932/)
-
-<img src="https://i.imgur.com/ANGHVhG.png" width="49%"> <img src="https://i.imgur.com/r5YOE26.png" width="49%">
-
-[Days of Sand](https://9ekunst.nl/2021/05/20/nieuw-album-van-aimee-de-jongh-is-benauwend-als-een-zandstorm/)
-
-<img src="https://i.imgur.com/m7PDiXN.jpg" width="49%"> <img src="https://i.imgur.com/eUwTGnn.jpg" width="49%">
-
-[Player (OH Hyeon-Jun)](https://comic.naver.com/webtoon/list?titleId=745876&page=1&sort=ASC&tab=fri)
-
-<img src="https://i.imgur.com/KGwiHJh.jpg" width="49%"> <img src="https://i.imgur.com/B8RMbRQ.jpg" width="49%">
-
-[Carbon & Silicon](https://www.amazon.com/Carbone-Silicium-French-Mathieu-Bablet-ebook/dp/B0C1LTGZ85/)
-
-<img src="https://i.imgur.com/h51XJx4.jpg" width="49%"> <img src="https://i.imgur.com/sLitjUY.jpg" width="49%">
-
 ## Installation
-### Python
-Install Python 3.12. Tick "Add python.exe to PATH" during the setup.
-```bash
-https://www.python.org/downloads/
-```
-Install git
-```bash
-https://git-scm.com/
-```
-Install uv
-```
-https://docs.astral.sh/uv/getting-started/installation/
-```
 
-Then, in the command line
+### Prerequisites
+- Python 3.12
+- Git
+- uv package manager
+
+### Setup
+
+1. Install Python 3.12 from [python.org](https://www.python.org/downloads/) (check "Add python.exe to PATH")
+2. Install Git from [git-scm.com](https://git-scm.com/)
+3. Install uv from [docs.astral.sh](https://docs.astral.sh/uv/getting-started/installation/)
+
+4. Clone and setup the repository:
 ```bash
 git clone https://github.com/SitriSaleos/UnComicTranslate
 cd UnComicTranslate
 uv init --python 3.12
-```
-and install the requirements
-```bash
 uv add -r requirements.txt --compile-bytecode
 ```
 
-To Update, run this in the comic-translate folder
-```bash
-git pull
-uv init --python 3.12 (Note: only run this line if you did not use uv for the first time installation)
-uv add -r requirements.txt --compile-bytecode
-```
-
-If you have an NVIDIA GPU, then it is recommended to run
+5. (Optional) For NVIDIA GPU support:
 ```bash
 uv pip install onnxruntime-gpu
 ```
 
-## Usage
-In the comic-translate directory, run
+### Updating
+
 ```bash
-uv run comic.py
+git pull
+uv add -r requirements.txt --compile-bytecode
 ```
-This will launch the GUI
+
+## Usage
+
+Launch the GUI:
+```bash
+uv run main.py
+```
 
 ### Tips
-* If you have a CBR file, you'll need to install Winrar or 7-Zip then add the folder it's installed to (e.g "C:\Program Files\WinRAR" for Windows) to Path. If it's installed but not to Path, you may get the error, 
-```bash
-raise RarCannotExec("Cannot find working tool")
-```
-In that case, Instructions for [Windows](https://www.windowsdigitals.com/add-folder-to-path-environment-variable-in-windows-11-10/), [Linux](https://linuxize.com/post/how-to-add-directory-to-path-in-linux/), [Mac](https://techpp.com/2021/09/08/set-path-variable-in-macos-guide/)
 
-* Make sure the selected Font supports characters of the target language
-* v2.0 introduces a Manual Mode. When you run into issues with Automatic Mode (No text detected, Incorrect OCR, Insufficient Cleaning etc), you are now able to make corrections. Simply Undo the Image and toggle Manual Mode.
-* In Automatic Mode, Once an Image has been processed, it is loaded in the Viewer or stored to be loaded on switch so you can keep reading in the app as the other Images are being translated.
-* Ctrl + Mouse Wheel to Zoom otherwise Vertical Scrolling
-* The Usual Trackpad Gestures work for viewing the Image
-* Right, Left Keys to Navigate Between Images
+- **CBR Files:** If using CBR files, install WinRAR or 7-Zip and add the installation folder to your system PATH. See instructions for [Windows](https://www.windowsdigitals.com/add-folder-to-path-environment-variable-in-windows-11-10/), [Linux](https://linuxize.com/post/how-to-add-directory-to-path-in-linux/), or [Mac](https://techpp.com/2021/09/08/set-path-variable-in-macos-guide/)
+
+- **Font Support:** Ensure your selected font supports characters of the target language
+
+- **Manual Mode:** When automatic mode encounters issues (undetected text, incorrect OCR, insufficient cleaning), use Manual Mode to make corrections. Undo the image and toggle Manual Mode
+
+- **Automatic Processing:** Once an image is processed, it loads in the Viewer while other images continue translating in the background
+
+- **Navigation:** 
+  - Ctrl + Mouse Wheel to zoom (or vertical scroll)
+  - Trackpad gestures supported
+  - Left/Right arrow keys to navigate between images
 
 ## API Keys
-To following selections will require access to closed resources and subsequently, API Keys:
-* GPT-4o or 4o-mini for Translation (Paid, about $0.01 USD/Page for 4o)
-* DeepL Translator (Free for 500,000 characters/month)
-* GPT-4o for OCR (Default Option for French, Russian, German, Dutch, Spanish, Italian) (Paid, about $0.02 USD/Page)
-* Microsoft Azure Vision for OCR (Free for 5000 images/month)
-* Google Cloud Vision for OCR (Free for 1000 images/month)
-You can set your API Keys by going to Settings > Credentials
+
+The following features require API keys:
+
+- **Translation:** GPT-4o or 4o-mini (~$0.01 USD/page for GPT-4o)
+- **OCR:** GPT-4o (~$0.02 USD/page), Microsoft Azure Vision (5000 images/month free), or Google Cloud Vision (1000 images/month free)
+- **DeepL Translator:** Free tier (500,000 characters/month)
+
+Configure API keys in Settings > Credentials
 
 ### Getting API Keys
-#### Open AI (GPT)
-* Go to OpenAI's Platform website at [platform.openai.com](https://platform.openai.com/) and sign in with (or create) an OpenAI account.
-* Hover your Mouse over the right taskbar of the page and select "API Keys."
-* Click "Create New Secret Key" to generate a new API key. Copy and store it.
 
-#### Google Cloud Vision 
-* Sign in/Create a [Google Cloud](https://cloud.google.com/) account. Go to [Cloud Resource Manager](https://console.cloud.google.com/cloud-resource-manager) and click "Create Project". Set your project name. 
-* [Select your project here](https://console.cloud.google.com/welcome) then select "Billing" then "Create Account". In the pop-up, "Enable billing account", and accept the offer of a free trial account. Your "Account type" should be individual. Fill in a valid credit card.
-* Enable Google Cloud Vison for your project [here](https://console.cloud.google.com/apis/library/vision.googleapis.com)
-* In the [Google Cloud Credentials](https://console.cloud.google.com/apis/credentials) page, click "Create Credentials" then API Key. Copy and store it.
+**OpenAI (GPT)**
+1. Go to [platform.openai.com](https://platform.openai.com/)
+2. Sign in or create an account
+3. Navigate to API Keys section
+4. Click "Create New Secret Key" and copy it
 
-## How it works
-### Speech Bubble Detection and Text Segmentation
-[bubble-and-text-detector](https://huggingface.co/ogkalu/comic-text-and-bubble-detector). RT-DETR-v2 model trained on 11k images of comics (Manga, Webtoons, Western).
-Algorithmic segmentation based on the boxes provided from the detection model.
+**Google Cloud Vision**
+1. Create a [Google Cloud](https://cloud.google.com/) account
+2. Go to [Cloud Resource Manager](https://console.cloud.google.com/cloud-resource-manager) and create a project
+3. Enable billing and set up a free trial account
+4. [Enable Google Cloud Vision API](https://console.cloud.google.com/apis/library/vision.googleapis.com)
+5. Go to [Credentials](https://console.cloud.google.com/apis/credentials), create an API Key, and copy it
 
-<img src="https://i.imgur.com/TlzVH3j.jpg" width="49%"> <img src="https://i.imgur.com/h18XrYT.jpg" width="49%"> 
+## How It Works
+
+### Text Detection & Segmentation
+Uses RT-DETR-v2 model trained on 11k comic images (manga, webtoons, western comics) for speech bubble and text detection, followed by algorithmic segmentation.
 
 ### OCR
-By Default:
-* [manga-ocr](https://github.com/kha-white/manga-ocr) for Japanese
-* [Pororo](https://github.com/yunwoong7/korean_ocr_using_pororo) for Korean 
-* [PPOCRv5](https://www.paddleocr.ai/main/en/version3.x/algorithm/PP-OCRv5/PP-OCRv5.html) for Everything Else
+**Default providers:**
+- [manga-ocr](https://github.com/kha-white/manga-ocr) for Japanese
+- [Pororo](https://github.com/yunwoong7/korean_ocr_using_pororo) for Korean
+- [PPOCRv5](https://www.paddleocr.ai/main/en/version3.x/algorithm/PP-OCRv5/PP-OCRv5.html) for other languages
 
-Optional:
-
-These can be used for any of the supported languages. An API Key is required.
-
-* [Google Cloud Vision](https://cloud.google.com/vision/docs/ocr)
-* [Microsoft Azure Vision](https://learn.microsoft.com/en-us/azure/ai-services/computer-vision/overview-ocr)
+**Optional (requires API key):**
+- [Google Cloud Vision](https://cloud.google.com/vision/docs/ocr)
+- [Microsoft Azure Vision](https://learn.microsoft.com/en-us/azure/ai-services/computer-vision/overview-ocr)
 
 ### Inpainting
-To remove the segmented text
-* A [Manga/Anime finetuned](https://huggingface.co/dreMaz/AnimeMangaInpainting) [lama](https://github.com/advimman/lama) checkpoint. Implementation courtsey of [lama-cleaner](https://github.com/Sanster/lama-cleaner)
-* [AOT-GAN](https://arxiv.org/abs/2104.01431) based model by [zyddnys](https://github.com/zyddnys)
-
-<img src="https://i.imgur.com/cVVGVXp.jpg" width="49%"> <img src="https://i.imgur.com/bLkPyqG.jpg" width="49%">
+Removes detected text using:
+- Manga/Anime finetuned [lama](https://github.com/advimman/lama) checkpoint
+- [AOT-GAN](https://arxiv.org/abs/2104.01431) based model
 
 ### Translation
-Currently, this supports using GPT-4.1, DeepL, Claude-3, 
-Gemini-2.5, Yandex, Google Translate and Microsoft Azure Translator.
-
-All LLMs are fed the entire page text to aid translations. 
-There is also the Option to provide the Image itself for further context. 
+Supports GPT-4o, GPT-4o-mini, DeepL, Claude-3, Gemini-2.5, Yandex, Google Translate, and Microsoft Azure Translator. Full page context provided to LLMs for better translations. Optional image context available.
 
 ### Text Rendering
-Wrapped text in bounding boxes obtained from bubbles and text.
+Renders translated text in bounding boxes from detected speech bubbles.
 
-## New Features
-### Detailed Web Export
-This feature allows you to export your translated projects into a format suitable for high-quality web display. 
-- **Clean Images:** Automatically exports inpainted images without text.
-- **JSON Data:** Provides structured JSON files containing coordinates, original text, and translated text for each block.
-- **Web-Ready:** Perfect for developers looking to build interactive comic viewers or mobile apps.
+## Features
+
+### Web Export
+Export translated projects in web-ready format:
+- Clean inpainted images without text
+- Structured JSON files with coordinates, original text, and translations
+- Perfect for building interactive comic viewers or mobile apps
 
 ## Acknowledgements
 
-* [https://github.com/Sanster/lama-cleaner](https://github.com/Sanster/lama-cleaner)
-* [https://huggingface.co/dreMaz](https://huggingface.co/dreMaz)
-* [https://github.com/yunwoong7/korean_ocr_using_pororo](https://github.com/yunwoong7/korean_ocr_using_pororo)
-* [https://github.com/kha-white/manga-ocr](https://github.com/kha-white/manga-ocr)
-* [https://github.com/JaidedAI/EasyOCR](https://github.com/JaidedAI/EasyOCR)
-* [https://github.com/PaddlePaddle/PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
-* [https://github.com/RapidAI/RapidOCR](https://github.com/RapidAI/RapidOCR)
-* [https://github.com/phenom-films/dayu_widgets](https://github.com/phenom-films/dayu_widgets)
+- [lama-cleaner](https://github.com/Sanster/lama-cleaner)
+- [AnimeMangaInpainting](https://huggingface.co/dreMaz/AnimeMangaInpainting)
+- [Pororo Korean OCR](https://github.com/yunwoong7/korean_ocr_using_pororo)
+- [manga-ocr](https://github.com/kha-white/manga-ocr)
+- [EasyOCR](https://github.com/JaidedAI/EasyOCR)
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
+- [RapidOCR](https://github.com/RapidAI/RapidOCR)
+- [dayu_widgets](https://github.com/phenom-films/dayu_widgets)
 
 

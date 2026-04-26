@@ -4,6 +4,8 @@ from PySide6.QtGui import QFont, QFontDatabase, QDesktopServices
 import json
 import logging
 from dataclasses import asdict, is_dataclass
+import os
+import shutil
 
 from .settings_ui import SettingsPageUI
 from app.account.auth.auth_client import AuthClient, USER_INFO_GROUP, \

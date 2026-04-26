@@ -18,7 +18,7 @@ class ClaudeTranslation(BaseLLMTranslation):
         self.api_url = "https://api.anthropic.com/v1/messages"
         self.headers = None
     
-    def initialize(self, settings: Any, source_lang: str, target_lang: str, model_name: str, **kwargs) -> None:
+    def initialize(self, settings: Any, source_lang: str, target_lang: str, model_name: str = None, platform: str = None, **kwargs) -> None:
         """
         Initialize Claude translation engine.
         
@@ -26,14 +26,15 @@ class ClaudeTranslation(BaseLLMTranslation):
             settings: Settings object with credentials
             source_lang: Source language name
             target_lang: Target language name
-            model_name: Claude model name
+            model_name: Optional specific model name
         """
         super().initialize(settings, source_lang, target_lang, **kwargs)
         
         self.temperature = self.temperature/2
-        self.model_name = model_name
-        credentials = settings.get_credentials(settings.ui.tr('Anthropic Claude'))
+        self.model_name = model_name or "claude-3-5-sonnet-20240620"
+        credentials = settings.get_credentials(platform or "Anthropic Claude")
         self.api_key = credentials.get('api_key', '')
+        self.model = MODEL_MAP.get(self.model_name, self.model_name)
         
         # Set up headers for API requests
         self.headers = {
@@ -41,8 +42,6 @@ class ClaudeTranslation(BaseLLMTranslation):
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json"
         }
-        
-        self.model = MODEL_MAP.get(self.model_name)
     
     def _perform_translation(self, user_prompt: str, system_prompt: str, image: np.ndarray) -> str:
         # Prepare request payload

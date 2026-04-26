@@ -19,14 +19,15 @@ class GeminiTranslation(BaseLLMTranslation):
         self.api_key = None
         self.api_base_url = "https://generativelanguage.googleapis.com/v1beta/models"
 
-    def initialize(self, settings: Any, source_lang: str, target_lang: str, model_name: str, **kwargs) -> None:
+    def initialize(self, settings: Any, source_lang: str, target_lang: str, model_name: str = None, platform: str = None, **kwargs) -> None:
         super().initialize(settings, source_lang, target_lang, **kwargs)
         
-        self.model_name = model_name
-        credentials = settings.get_credentials("Google Gemini")
+        self.model_name = model_name or "gemini-2.0-flash"
+        credentials = settings.get_credentials(platform or "Google Gemini")
         
         self.api_key = credentials.get('api_key', '')
-        self.model_api_name = MODEL_MAP.get(self.model_name)
+        # If it's a known mapped model name, use the API name, otherwise use it directly
+        self.model_api_name = MODEL_MAP.get(self.model_name, self.model_name)
     
     def _perform_translation(self, user_prompt: str, system_prompt: str, image: np.ndarray) -> str:
         return self._perform_translation_api(user_prompt, system_prompt, image)

@@ -4,55 +4,47 @@ import requests
 import json
 
 from .base import BaseLLMTranslation
-from ...utils.translator_utils import MODEL_MAP
 
 
-class GPTTranslation(BaseLLMTranslation):
-    """Translation engine using OpenAI GPT models through direct REST API calls."""
+class OpenRouterTranslation(BaseLLMTranslation):
+    """Translation engine using OpenRouter models."""
     
     def __init__(self):
         super().__init__()
-        self.model_name = None
         self.api_key = None
-        self.api_base_url = "https://api.openai.com/v1"
+        self.api_base_url = "https://openrouter.ai/api/v1"
         self.supports_images = True
     
     def initialize(self, settings: Any, source_lang: str, target_lang: str, model_name: str = None, platform: str = None, **kwargs) -> None:
         """
-        Initialize GPT translation engine.
+        Initialize OpenRouter translation engine.
         
         Args:
             settings: Settings object with credentials
             source_lang: Source language name
             target_lang: Target language name
-            model_name: Optional specific model name
+            model_name: Optional model name
         """
         super().initialize(settings, source_lang, target_lang, **kwargs)
         
-        self.model_name = model_name or "gpt-4o"
-        credentials = settings.get_credentials(platform or settings.ui.tr('Open AI GPT'))
+        credentials = settings.get_credentials(platform or 'OpenRouter')
         self.api_key = credentials.get('api_key', '')
-        self.model = MODEL_MAP.get(self.model_name, self.model_name)
+        
+        # Priority: model_name from argument, then selected_model from credentials, then manual model field, then fallback
+        self.model = model_name or credentials.get('selected_model') or credentials.get('model') or "google/gemini-2.0-flash-001"
     
     def _perform_translation(self, user_prompt: str, system_prompt: str, image: np.ndarray) -> str:
         """
-        Perform translation using direct REST API calls to OpenAI.
-        
-        Args:
-            user_prompt: Text prompt from user
-            system_prompt: System instructions
-            image: Image as numpy array
-            
-        Returns:
-            Translated text
+        Perform translation using direct REST API calls to OpenRouter.
         """
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
+            "Authorization": f"Bearer {self.api_key}",
+            "HTTP-Referer": "https://github.com/SitriSaleos/UnComicTranslate",
+            "X-Title": "UnComicTranslate"
         }
         
         if self.supports_images and self.img_as_llm_input:
-            # Use the base class method to encode the image
             encoded_image, mime_type = self.encode_image(image)
             
             messages = [
@@ -84,16 +76,13 @@ class GPTTranslation(BaseLLMTranslation):
             "model": self.model,
             "messages": messages,
             "temperature": self.temperature,
-            "max_completion_tokens": self.max_tokens,
+            "max_tokens": self.max_tokens,
             "top_p": self.top_p,
         }
 
         return self._make_api_request(payload, headers)
     
     def _make_api_request(self, payload, headers):
-        """
-        Make API request and process response
-        """
         try:
             response = requests.post(
                 f"{self.api_base_url}/chat/completions",
@@ -105,7 +94,10 @@ class GPTTranslation(BaseLLMTranslation):
             response.raise_for_status()
             response_data = response.json()
             
-            return response_data["choices"][0]["message"]["content"]
+            if "choices" in response_data and len(response_data["choices"]) > 0:
+                return response_data["choices"][0]["message"]["content"]
+            else:
+                raise RuntimeError(f"Unexpected response format: {json.dumps(response_data)}")
         except requests.exceptions.RequestException as e:
             error_msg = f"API request failed: {str(e)}"
             if hasattr(e, 'response') and e.response is not None:

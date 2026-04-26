@@ -23,9 +23,9 @@ class DeepseekTranslation(GPTTranslation):
             model_name: Deepseek model name
         """
         # Call BaseLLMTranslation's initialize
-        super(GPTTranslation, self).initialize(settings, source_lang, target_lang, **kwargs)
+        super().initialize(settings, source_lang, target_lang, **kwargs)
         
-        self.model_name = model_name
-        credentials = settings.get_credentials(settings.ui.tr('Deepseek'))
+        self.model_name = model_name or "deepseek-chat"
+        credentials = settings.get_credentials(platform or "Deepseek")
         self.api_key = credentials.get('api_key', '')
-        self.model = MODEL_MAP.get(self.model_name)
+        self.model = MODEL_MAP.get(self.model_name, self.model_name)

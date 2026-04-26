@@ -47,28 +47,8 @@ class Translator:
     def _get_translator_key(self, localized_translator: str) -> str:
         """
         Map localized translator names to standard keys.
-        
-        Args:
-            localized_translator: Translator name in UI language
-            
-        Returns:
-            Standard translator key
         """
-        translator_map = {
-            self.settings.ui.tr("Custom"): "Custom",
-            self.settings.ui.tr("Deepseek-v3"): "Deepseek-v3",
-            self.settings.ui.tr("GPT-4.1"): "GPT-4.1",
-            self.settings.ui.tr("GPT-4.1-mini"): "GPT-4.1-mini",
-            self.settings.ui.tr("Claude-4.5-Sonnet"): "Claude-4.5-Sonnet",
-            self.settings.ui.tr("Claude-4.5-Haiku"): "Claude-4.5-Haiku",
-            self.settings.ui.tr("Gemini-2.5-Flash"): "Gemini-2.5-Flash",
-            self.settings.ui.tr("Gemini-2.5-Pro"): "Gemini-2.5-Pro",
-            self.settings.ui.tr("Google Translate"): "Google Translate",
-            self.settings.ui.tr("Microsoft Translator"): "Microsoft Translator",
-            self.settings.ui.tr("DeepL"): "DeepL",
-            self.settings.ui.tr("Yandex"): "Yandex"
-        }
-        return translator_map.get(localized_translator, localized_translator)
+        return self.settings.ui.value_mappings.get(localized_translator, localized_translator)
     
     def _get_english_lang(self, main_page, translated_lang: str) -> str:
         """

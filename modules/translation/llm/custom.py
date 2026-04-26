@@ -8,7 +8,7 @@ class CustomTranslation(GPTTranslation):
     def __init__(self):
         super().__init__()
     
-    def initialize(self, settings: Any, source_lang: str, target_lang: str, tr_key: str, **kwargs) -> None:
+    def initialize(self, settings: Any, source_lang: str, target_lang: str, model_name: str = None, platform: str = None, **kwargs) -> None:
         """
         Initialize custom translation engine.
         
@@ -17,14 +17,13 @@ class CustomTranslation(GPTTranslation):
             source_lang: Source language name
             target_lang: Target language name
         """
-        # Call BaseLLMTranslation's initialize, not GPTTranslation's
-        # to avoid the GPT-specific credential loading
+        # Call BaseLLMTranslation's initialize
         super(GPTTranslation, self).initialize(settings, source_lang, target_lang, **kwargs)
         
-        # Get custom credentials instead of OpenAI credentials
-        credentials = settings.get_credentials(settings.ui.tr(tr_key))
+        # Get custom credentials
+        credentials = settings.get_credentials(platform or "Custom")
         self.api_key = credentials.get('api_key', '')
-        self.model = credentials.get('model', '')
+        self.model = model_name or credentials.get('model', '')
         
         # Override the API base URL with the custom one
         self.api_base_url = credentials.get('api_url', '').rstrip('/')

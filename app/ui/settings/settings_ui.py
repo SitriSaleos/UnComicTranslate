@@ -61,16 +61,22 @@ class SettingsPageUI(QtWidgets.QWidget):
         self.themes = [self.tr('Dark'), self.tr('Light')]
         self.alignment = [self.tr("Left"), self.tr("Center"), self.tr("Right")]
 
-        self.credential_services = [self.tr("Google Gemini"), self.tr("DeeLX"), self.tr("Custom"), self.tr("Deepseek"), self.tr("Open AI GPT"), self.tr("Microsoft Azure"), self.tr("Google Cloud"), 
+        self.credential_services = [self.tr("Google Gemini"), self.tr("OpenRouter"), self.tr("DeeLX"), self.tr("Custom"), self.tr("Deepseek"), self.tr("Open AI GPT"), self.tr("Microsoft Azure"), self.tr("Google Cloud"), 
                                     self.tr("DeepL"), self.tr("Anthropic Claude"), self.tr("Yandex")]
         
-        self.supported_translators = [self.tr("GPT-4.1"), self.tr("GPT-4.1-mini"), self.tr("DeepL"), 
-                                    self.tr("Claude-4.5-Sonnet"), self.tr("Claude-4.5-Haiku"),
-                                    self.tr("Gemini-3-Flash-Preview"), self.tr("Gemini-3.1-Flash-Lite-Preview"),
-                                    self.tr("Gemini-2.5-Flash"), self.tr("Gemini-2.5-Flash-Lite"), self.tr("Gemini-2.5-Pro"),
-                                    self.tr("Gemma-4-26b-it"), self.tr("Gemma-4-31b-it"),
-                                    self.tr("Yandex"), self.tr("Google Translate"),
-                                    self.tr("Microsoft Translator"), self.tr("Deepseek-v3"), self.tr("DeeLX"), self.tr("Custom"),]
+        self.supported_translators = [
+            self.tr("Google Gemini"), 
+            self.tr("Open AI GPT"), 
+            self.tr("OpenRouter"), 
+            self.tr("Anthropic Claude"), 
+            self.tr("Deepseek"), 
+            self.tr("Yandex"), 
+            self.tr("Google Translate"), 
+            self.tr("Microsoft Translator"), 
+            self.tr("DeepL"), 
+            self.tr("DeeLX"), 
+            self.tr("Custom")
+        ]
         
         self.languages = ['English', '한국어', 'Français', '日本語', 
          '简体中文', '繁體中文', 'русский', 'Deutsch', 
@@ -99,25 +105,17 @@ class SettingsPageUI(QtWidgets.QWidget):
             self.tr("Light"): "Light",
 
             # Translator mappings
-            self.tr("Custom"): "Custom",
-            self.tr("Deepseek-v3"): "Deepseek-v3",
-            self.tr("GPT-4.1"): "GPT-4.1",
-            self.tr("GPT-4.1-mini"): "GPT-4.1-mini",
-            self.tr("DeepL"): "DeepL",
-            self.tr("Claude-4.5-Sonnet"): "Claude-4.5-Sonnet",
-            self.tr("Claude-4.5-Haiku"): "Claude-4.5-Haiku",
-            self.tr("Gemini-3-Flash-Preview"): "Gemini-3-Flash-Preview",
-            self.tr("Gemini-3.1-Flash-Lite-Preview"): "Gemini-3.1-Flash-Lite-Preview",
-            self.tr("Gemini-2.5-Flash"): "Gemini-2.5-Flash",
-            self.tr("Gemini-2.5-Flash-Lite"): "Gemini-2.5-Flash-Lite",
-            self.tr("Gemini-2.5-Pro"): "Gemini-2.5-Pro",
-            self.tr("Gemini-2.0-Flash"): "Gemini-2.5-Flash",
-            self.tr("Gemini-2.5-Flash-Lite"): "Gemini-2.5-Flash-Lite",
-            self.tr("Gemma-4-26b-it"): "Gemma-4-26b-it",
-            self.tr("Gemma-4-31b-it"): "Gemma-4-31b-it",
+            self.tr("Google Gemini"): "Google Gemini",
+            self.tr("Open AI GPT"): "Open AI GPT",
+            self.tr("OpenRouter"): "OpenRouter",
+            self.tr("Anthropic Claude"): "Anthropic Claude",
+            self.tr("Deepseek"): "Deepseek",
             self.tr("Yandex"): "Yandex",
             self.tr("Google Translate"): "Google Translate",
             self.tr("Microsoft Translator"): "Microsoft Translator",
+            self.tr("DeepL"): "DeepL",
+            self.tr("DeeLX"): "DeeLX",
+            self.tr("Custom"): "Custom",
 
             # OCR mappings
             self.tr("Default"): "Default",
@@ -148,6 +146,7 @@ class SettingsPageUI(QtWidgets.QWidget):
             self.tr("Microsoft Azure"): "Microsoft Azure",
             self.tr("Google Cloud"): "Google Cloud",
             self.tr("Google Gemini"): "Google Gemini",
+            self.tr("OpenRouter"): "OpenRouter",
             self.tr("DeepL"): "DeepL",
             self.tr("Anthropic Claude"): "Anthropic Claude",
             self.tr("Yandex"): "Yandex",
@@ -287,7 +286,7 @@ class SettingsPageUI(QtWidgets.QWidget):
         for index, setting in enumerate([
             {"title": self.tr("Personalization"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Tools"), "avatar": MPixmap(".svg")},
-            {"title": self.tr("Model"), "avatar": MPixmap(".svg")},
+            {"title": self.tr("Credentials"), "avatar": MPixmap(".svg")},
             {"title": self.tr("LLMs"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Text Rendering"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Export"), "avatar": MPixmap(".svg")},

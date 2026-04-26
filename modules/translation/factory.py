@@ -11,6 +11,7 @@ from .llm.claude import ClaudeTranslation
 from .llm.gemini import GeminiTranslation
 from .llm.deepseek import DeepseekTranslation
 from .llm.custom import CustomTranslation
+from .llm.openrouter import OpenRouterTranslation
 from .deelx import DeeLXTranslation
 
 
@@ -34,6 +35,7 @@ class TranslationFactory:
         "Claude": ClaudeTranslation,
         "Gemini": GeminiTranslation,
         "Deepseek": DeepseekTranslation,
+        "OpenRouter": OpenRouterTranslation,
         "Custom": CustomTranslation
     }
     
@@ -42,7 +44,7 @@ class TranslationFactory:
     DEFAULT_LLM_ENGINE = GPTTranslation
     
     @classmethod
-    def create_engine(cls, settings, source_lang: str, target_lang: str, translator_key: str) -> TranslationEngine:
+    def create_engine(cls, settings, source_lang: str, target_lang: str, translator_key: str, model_name: str = None) -> TranslationEngine:
         """
         Create or retrieve an appropriate translation engine based on settings.
         
@@ -51,6 +53,7 @@ class TranslationFactory:
             source_lang: Source language name
             target_lang: Target language name
             translator_key: Key identifying which translator to use
+            model_name: Optional specific model name to use
             
         Returns:
             Appropriate translation engine instance
@@ -66,11 +69,16 @@ class TranslationFactory:
         engine_class = cls._get_engine_class(translator_key)
         engine = engine_class()
         
+        # If no model_name provided, try to get it from credentials
+        if model_name is None:
+            creds = settings.get_credentials(translator_key)
+            model_name = creds.get('selected_model') if creds else None
+
         # Initialize with appropriate parameters
         if translator_key in cls.TRADITIONAL_ENGINES:
             engine.initialize(settings, source_lang, target_lang)
         else:
-            engine.initialize(settings, source_lang, target_lang, translator_key)
+            engine.initialize(settings, source_lang, target_lang, model_name=model_name, platform=translator_key)
         
         # Cache the engine
         cls._engines[cache_key] = engine

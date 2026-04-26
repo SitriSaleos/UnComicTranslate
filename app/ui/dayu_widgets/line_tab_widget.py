@@ -42,7 +42,7 @@ class MUnderlineButtonGroup(MButtonGroupBase):
         self._line_tab = tab
         self.set_spacing(1)
         self._button_group.setExclusive(True)
-        self._button_group.buttonClicked[int].connect(self.sig_checked_changed)
+        self._button_group.idClicked.connect(self.sig_checked_changed)
 
     def create_button(self, data_dict):
         button = MUnderlineButton(parent=self)

@@ -1,172 +1,227 @@
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtCore, QtGui
 from ..dayu_widgets.label import MLabel
 from ..dayu_widgets.line_edit import MLineEdit
 from ..dayu_widgets.check_box import MCheckBox
+from ..dayu_widgets.push_button import MPushButton
+from ..dayu_widgets.line_tab_widget import MLineTabWidget
+from ..dayu_widgets.message import MMessage
+from ..dayu_widgets.loading import MLoadingWrapper
 from .utils import set_label_width
+from modules.translation.models import ModelManager
+
+class PlatformCredentialWidget(QtWidgets.QWidget):
+    def __init__(self, platform_display_name, platform_internal_name, parent=None):
+        super().__init__(parent)
+        self.platform_display_name = platform_display_name
+        self.platform_internal_name = platform_internal_name
+        self.widgets = {}
+        self._init_ui()
+
+    def _init_ui(self):
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 10, 0, 0)
+        
+        # Header
+        header = MLabel(self.platform_display_name).strong().h2()
+        layout.addWidget(header)
+        layout.addSpacing(10)
+
+        # Fields based on platform
+        if self.platform_internal_name == "Microsoft Azure":
+            self._add_azure_fields(layout)
+        elif self.platform_internal_name == "Custom":
+            self._add_custom_fields(layout)
+        elif self.platform_internal_name == "Yandex":
+            self._add_yandex_fields(layout)
+        elif self.platform_internal_name == "DeeLX":
+            self._add_deelx_fields(layout)
+        else:
+            # Standard LLM platforms (Gemini, GPT, OpenRouter, Claude, Deepseek, DeepL, etc.)
+            self._add_standard_llm_fields(layout)
+            
+        layout.addStretch(1)
+
+    def _add_line_edit(self, layout, label_text, password=False):
+        edit = MLineEdit()
+        if password:
+            edit.setEchoMode(QtWidgets.QLineEdit.Password)
+        edit.setFixedWidth(400)
+        prefix = MLabel(label_text).border()
+        set_label_width(prefix)
+        prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        edit.set_prefix_widget(prefix)
+        layout.addWidget(edit)
+        return edit
+
+    def _add_standard_llm_fields(self, layout):
+        api_key_label = self.tr("API Key")
+        if self.platform_internal_name == "DeepL":
+            api_key_label = self.tr("Auth Key")
+            
+        self.api_key_input = self._add_line_edit(layout, api_key_label, password=True)
+        self.widgets[f"{self.platform_internal_name}_api_key"] = self.api_key_input
+        
+        # If it's a platform that supports model fetching
+        if self.platform_internal_name in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek"]:
+            layout.addSpacing(15)
+            
+            fetch_layout = QtWidgets.QHBoxLayout()
+            self.fetch_btn = MPushButton(self.tr("Fetch Models")).primary().small()
+            self.fetch_btn.clicked.connect(self._fetch_models)
+            fetch_layout.addWidget(self.fetch_btn)
+            fetch_layout.addStretch(1)
+            layout.addLayout(fetch_layout)
+            
+            layout.addSpacing(5)
+            layout.addWidget(MLabel(self.tr("Model List")).secondary())
+            self.model_list = QtWidgets.QListWidget()
+            self.model_list.setFixedHeight(200)
+            self.model_list.setFixedWidth(400)
+            layout.addWidget(self.model_list)
+            self.widgets[f"{self.platform_internal_name}_model_list"] = self.model_list
+
+    def _add_azure_fields(self, layout):
+        layout.addWidget(MLabel(self.tr("OCR")).secondary())
+        self.widgets["Microsoft Azure_api_key_ocr"] = self._add_line_edit(layout, self.tr("API Key"), password=True)
+        self.widgets["Microsoft Azure_endpoint"] = self._add_line_edit(layout, self.tr("Endpoint URL"))
+        
+        layout.addSpacing(10)
+        layout.addWidget(MLabel(self.tr("Translate")).secondary())
+        self.widgets["Microsoft Azure_api_key_translator"] = self._add_line_edit(layout, self.tr("API Key"), password=True)
+        self.widgets["Microsoft Azure_region"] = self._add_line_edit(layout, self.tr("Region"))
+
+    def _add_custom_fields(self, layout):
+        self.widgets["Custom_api_key"] = self._add_line_edit(layout, self.tr("API Key"), password=True)
+        self.widgets["Custom_api_url"] = self._add_line_edit(layout, self.tr("Endpoint URL"))
+        self.widgets["Custom_model"] = self._add_line_edit(layout, self.tr("Model"))
+
+    def _add_yandex_fields(self, layout):
+        self.widgets["Yandex_api_key"] = self._add_line_edit(layout, self.tr("Secret Key"), password=True)
+        self.widgets["Yandex_folder_id"] = self._add_line_edit(layout, self.tr("Folder ID"))
+
+    def _add_deelx_fields(self, layout):
+        self.enabled_checkbox = MCheckBox(self.tr("Enabled"))
+        layout.addWidget(self.enabled_checkbox)
+        self.widgets["DeeLX_self_hosted"] = self.enabled_checkbox
+        
+        self.url_input = self._add_line_edit(layout, self.tr("URL"))
+        self.widgets["DeeLX_url"] = self.url_input
+        
+        self.url_input.setEnabled(self.enabled_checkbox.isChecked())
+        self.enabled_checkbox.toggled.connect(self.url_input.setEnabled)
+
+    def _fetch_models(self):
+        api_key = self.api_key_input.text()
+        if not api_key and self.platform_internal_name != "OpenRouter":
+            MMessage.error(self.tr("Please enter an API Key first"), parent=self)
+            return
+
+        # Show loading indicator (optional, but good UX)
+        self.fetch_btn.setEnabled(False)
+        self.fetch_btn.setText(self.tr("Fetching..."))
+        
+        # Use a thread for fetching to avoid UI freeze
+        class FetchThread(QtCore.QThread):
+            finished = QtCore.Signal(list)
+            def __init__(self, platform, key):
+                super().__init__()
+                self.platform = platform
+                self.key = key
+            def run(self):
+                models = []
+                if self.platform == "Google Gemini":
+                    models = ModelManager.fetch_gemini_models(self.key)
+                elif self.platform == "OpenRouter":
+                    models = ModelManager.fetch_openrouter_models(self.key)
+                elif self.platform == "Open AI GPT":
+                    models = ModelManager.fetch_openai_models(self.key)
+                elif self.platform == "Anthropic Claude":
+                    models = ModelManager.fetch_anthropic_models(self.key)
+                elif self.platform == "Deepseek":
+                    models = ModelManager.fetch_deepseek_models(self.key)
+                self.finished.emit(models)
+
+        self.thread = FetchThread(self.platform_internal_name, api_key)
+        self.thread.finished.connect(self._on_models_fetched)
+        self.thread.start()
+
+    def _on_models_fetched(self, models):
+        self.fetch_btn.setEnabled(True)
+        self.fetch_btn.setText(self.tr("Fetch Models"))
+        
+        if not models:
+            MMessage.warning(self.tr("No models found or error occurred"), parent=self)
+            return
+
+        self.model_list.clear()
+        self.model_list.addItems(models)
+        MMessage.success(self.tr(f"Fetched {len(models)} models"), parent=self)
+
 
 class CredentialsPage(QtWidgets.QWidget):
     def __init__(self, services: list[str], value_mappings: dict[str, str], parent=None):
         super().__init__(parent)
         self.services = services
         self.value_mappings = value_mappings
-        self.credential_widgets: dict[str, MLineEdit] = {}
+        self.credential_widgets = {} # Flat dictionary for backward compatibility
+        self.platform_widgets = {}
 
-        # main layout (no internal scroll here — outer settings scroll handles it)
+        # main layout
         main_layout = QtWidgets.QVBoxLayout(self)
-        content_layout = QtWidgets.QVBoxLayout()
-
+        
+        # Save Keys Checkbox
         self.save_keys_checkbox = MCheckBox(self.tr("Save Keys"))
-        content_layout.addWidget(self.save_keys_checkbox)
-        content_layout.addSpacing(20)
+        main_layout.addWidget(self.save_keys_checkbox)
+        main_layout.addSpacing(10)
 
-        for service_label in self.services:
-            service_layout = QtWidgets.QVBoxLayout()
-            service_header = MLabel(service_label).strong()
-            service_header.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-            service_layout.addWidget(service_header)
+        # Stacked Widget
+        self.stacked_widget = QtWidgets.QStackedWidget()
+        main_layout.addWidget(self.stacked_widget)
+        
+        # Grid Page (Page 0)
+        self.grid_page = QtWidgets.QWidget()
+        self.grid_layout = QtWidgets.QGridLayout(self.grid_page)
+        self.grid_layout.setContentsMargins(0, 0, 0, 0)
+        self.grid_layout.setSpacing(15)
+        self.stacked_widget.addWidget(self.grid_page)
 
-            normalized = self.value_mappings.get(service_label, service_label)
+        row = 0
+        col = 0
+        max_cols = 3
 
-            if normalized == "Microsoft Azure":
-                # OCR
-                ocr_label = MLabel(self.tr("OCR")).secondary()
-                service_layout.addWidget(ocr_label)
+        for i, service_label in enumerate(self.services):
+            internal_name = self.value_mappings.get(service_label, service_label)
+            
+            # Create Card/Button for Grid
+            btn = MPushButton(text=service_label)
+            btn.setFixedSize(160, 60) # Large button acting like a card
+            # Capture the index for the closure
+            btn.clicked.connect(lambda checked=False, idx=i+1: self.stacked_widget.setCurrentIndex(idx))
+            
+            self.grid_layout.addWidget(btn, row, col)
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
+            
+            # Create Platform Settings Widget
+            platform_widget = PlatformCredentialWidget(service_label, internal_name)
+            
+            # Add Back Button
+            back_btn = MPushButton(text=self.tr("← Back to Providers")).small()
+            back_btn.setFixedWidth(150)
+            back_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
+            platform_widget.layout().insertWidget(0, back_btn)
+            platform_widget.layout().insertSpacing(1, 10)
+            
+            self.stacked_widget.addWidget(platform_widget)
+            self.platform_widgets[internal_name] = platform_widget
+            
+            # Merge widgets into the flat dictionary for SettingsPage to access
+            self.credential_widgets.update(platform_widget.widgets)
 
-                ocr_api_key_input = MLineEdit()
-                ocr_api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
-                ocr_api_key_input.setFixedWidth(400)
-                ocr_api_key_prefix = MLabel(self.tr("API Key")).border()
-                set_label_width(ocr_api_key_prefix)
-                ocr_api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                ocr_api_key_input.set_prefix_widget(ocr_api_key_prefix)
-                service_layout.addWidget(ocr_api_key_input)
-                self.credential_widgets["Microsoft Azure_api_key_ocr"] = ocr_api_key_input
+        # Add vertical stretch to push the grid to the top
+        self.grid_layout.setRowStretch(row + 1, 1)
+        # Add horizontal stretch to push the grid to the left
+        self.grid_layout.setColumnStretch(max_cols, 1)
 
-                endpoint_input = MLineEdit()
-                endpoint_input.setFixedWidth(400)
-                endpoint_prefix = MLabel(self.tr("Endpoint URL")).border()
-                set_label_width(endpoint_prefix)
-                endpoint_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                endpoint_input.set_prefix_widget(endpoint_prefix)
-                service_layout.addWidget(endpoint_input)
-                self.credential_widgets["Microsoft Azure_endpoint"] = endpoint_input
-
-                # Translator
-                translate_label = MLabel(self.tr("Translate")).secondary()
-                service_layout.addWidget(translate_label)
-
-                translator_api_key_input = MLineEdit()
-                translator_api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
-                translator_api_key_input.setFixedWidth(400)
-                translator_api_key_prefix = MLabel(self.tr("API Key")).border()
-                set_label_width(translator_api_key_prefix)
-                translator_api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                translator_api_key_input.set_prefix_widget(translator_api_key_prefix)
-                service_layout.addWidget(translator_api_key_input)
-                self.credential_widgets["Microsoft Azure_api_key_translator"] = translator_api_key_input
-
-                region_input = MLineEdit()
-                region_input.setFixedWidth(400)
-                region_prefix = MLabel(self.tr("Region")).border()
-                set_label_width(region_prefix)
-                region_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                region_input.set_prefix_widget(region_prefix)
-                service_layout.addWidget(region_input)
-                self.credential_widgets["Microsoft Azure_region"] = region_input
-
-            elif normalized == "Custom":
-                api_key_input = MLineEdit()
-                api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
-                api_key_input.setFixedWidth(400)
-                api_key_prefix = MLabel(self.tr("API Key")).border()
-                set_label_width(api_key_prefix)
-                api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                api_key_input.set_prefix_widget(api_key_prefix)
-                service_layout.addWidget(api_key_input)
-                self.credential_widgets[f"{normalized}_api_key"] = api_key_input
-
-                endpoint_input = MLineEdit()
-                endpoint_input.setFixedWidth(400)
-                endpoint_prefix = MLabel(self.tr("Endpoint URL")).border()
-                set_label_width(endpoint_prefix)
-                endpoint_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                endpoint_input.set_prefix_widget(endpoint_prefix)
-                service_layout.addWidget(endpoint_input)
-                self.credential_widgets[f"{normalized}_api_url"] = endpoint_input
-
-                model_input = MLineEdit()
-                model_input.setFixedWidth(400)
-                model_prefix = MLabel(self.tr("Model")).border()
-                set_label_width(model_prefix)
-                model_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                model_input.set_prefix_widget(model_prefix)
-                service_layout.addWidget(model_input)
-                self.credential_widgets[f"{normalized}_model"] = model_input
-
-            elif normalized == "Yandex":
-                api_key_input = MLineEdit()
-                api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
-                api_key_input.setFixedWidth(400)
-                api_key_prefix = MLabel(self.tr("Secret Key")).border()
-                set_label_width(api_key_prefix)
-                api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                api_key_input.set_prefix_widget(api_key_prefix)
-                service_layout.addWidget(api_key_input)
-                self.credential_widgets[f"{normalized}_api_key"] = api_key_input
-
-                folder_id_input = MLineEdit()
-                folder_id_input.setFixedWidth(400)
-                folder_id_prefix = MLabel(self.tr("Folder ID")).border()
-                set_label_width(folder_id_prefix)
-                folder_id_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                folder_id_input.set_prefix_widget(folder_id_prefix)
-                service_layout.addWidget(folder_id_input)
-                self.credential_widgets[f"{normalized}_folder_id"] = folder_id_input
-
-            elif normalized == "Google Gemini":
-                api_key_input = MLineEdit()
-                api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
-                api_key_input.setFixedWidth(400)
-                api_key_prefix = MLabel(self.tr("API Key")).border()
-                set_label_width(api_key_prefix)
-                api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                api_key_input.set_prefix_widget(api_key_prefix)
-                service_layout.addWidget(api_key_input)
-                self.credential_widgets[f"{normalized}_api_key"] = api_key_input
-
-            elif normalized == "DeeLX":
-                # Enabled Checkbox
-                self_hosted_checkbox = MCheckBox(self.tr("Enabled"))
-                service_layout.addWidget(self_hosted_checkbox)
-                self.credential_widgets[f"{normalized}_self_hosted"] = self_hosted_checkbox
-
-                # URL Input
-                url_input = MLineEdit()
-                url_input.setFixedWidth(400)
-                url_prefix = MLabel(self.tr("URL")).border()
-                set_label_width(url_prefix)
-                url_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                url_input.set_prefix_widget(url_prefix)
-                service_layout.addWidget(url_input)
-                self.credential_widgets[f"{normalized}_url"] = url_input
-
-                # Initial state & toggle
-                url_input.setEnabled(self_hosted_checkbox.isChecked())
-                self_hosted_checkbox.toggled.connect(url_input.setEnabled)
-
-            else:
-                api_key_input = MLineEdit()
-                api_key_input.setEchoMode(QtWidgets.QLineEdit.Password)
-                api_key_input.setFixedWidth(400)
-                api_key_prefix = MLabel(self.tr("API Key")).border()
-                set_label_width(api_key_prefix)
-                api_key_prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                api_key_input.set_prefix_widget(api_key_prefix)
-                service_layout.addWidget(api_key_input)
-                self.credential_widgets[f"{normalized}_api_key"] = api_key_input
-
-            content_layout.addLayout(service_layout)
-            content_layout.addSpacing(20)
-
-        content_layout.addStretch(1)
-        main_layout.addLayout(content_layout)

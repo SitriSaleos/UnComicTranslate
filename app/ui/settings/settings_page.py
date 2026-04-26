@@ -99,36 +99,45 @@ class SettingsPage(QtWidgets.QWidget):
     def get_credentials(self, service: str = ""):
         save_keys = self.ui.save_keys_checkbox.isChecked()
 
-        def _text_or_none(widget_key):
+        def _get_val(widget_key):
             w = self.ui.credential_widgets.get(widget_key)
-            return w.text() if w is not None else None
+            if isinstance(w, QtWidgets.QLineEdit):
+                return w.text()
+            elif isinstance(w, QtWidgets.QListWidget):
+                item = w.currentItem()
+                return item.text() if item else None
+            elif isinstance(w, QtWidgets.QCheckBox):
+                return w.isChecked()
+            return None
 
         if service:
+            internal_service = self.ui.value_mappings.get(service, service)
             creds = {'save_key': save_keys}
-            if service == "Microsoft Azure":
+            if internal_service == "Microsoft Azure":
                 creds.update({
-                    'api_key_ocr': _text_or_none("Microsoft Azure_api_key_ocr"),
-                    'api_key_translator': _text_or_none("Microsoft Azure_api_key_translator"),
-                    'region_translator': _text_or_none("Microsoft Azure_region"),
-                    'endpoint': _text_or_none("Microsoft Azure_endpoint"),
+                    'api_key_ocr': _get_val("Microsoft Azure_api_key_ocr"),
+                    'api_key_translator': _get_val("Microsoft Azure_api_key_translator"),
+                    'region_translator': _get_val("Microsoft Azure_region"),
+                    'endpoint': _get_val("Microsoft Azure_endpoint"),
                 })
-            elif service == "Custom":
+            elif internal_service == "Custom":
                 for field in ("api_key", "api_url", "model"):
-                    creds[field] = _text_or_none(f"Custom_{field}")
-            elif service == "Yandex":
-                creds['api_key'] = _text_or_none("Yandex_api_key")
-                creds['folder_id'] = _text_or_none("Yandex_folder_id")
-            elif service == "Google Gemini":
+                    creds[field] = _get_val(f"Custom_{field}")
+            elif internal_service == "Yandex":
+                creds['api_key'] = _get_val("Yandex_api_key")
+                creds['folder_id'] = _get_val("Yandex_folder_id")
+            elif internal_service == "DeeLX":
                 creds.update({
-                    'api_key': _text_or_none("Google Gemini_api_key"),
-                })
-            elif service == "DeeLX":
-                creds.update({
-                    'self_hosted': self.ui.credential_widgets["DeeLX_self_hosted"].isChecked(),
-                    'url': _text_or_none("DeeLX_url"),
+                    'self_hosted': _get_val("DeeLX_self_hosted"),
+                    'url': _get_val("DeeLX_url"),
                 })
             else:
-                creds['api_key'] = _text_or_none(f"{service}_api_key")
+                # Standard LLM platforms
+                creds['api_key'] = _get_val(f"{internal_service}_api_key")
+                # Also include selected model if it exists in the UI
+                model = _get_val(f"{internal_service}_model_list")
+                if model:
+                    creds['selected_model'] = model
 
             return creds
 
@@ -250,8 +259,10 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "Yandex":
                     settings.setValue(f"{translated_service}_api_key", cred['api_key'])
                     settings.setValue(f"{translated_service}_folder_id", cred['folder_id'])
-                elif translated_service == "Google Gemini":
+                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek"]:
                     settings.setValue(f"{translated_service}_api_key", cred['api_key'])
+                    if 'selected_model' in cred and cred['selected_model']:
+                        settings.setValue(f"{translated_service}_selected_model", cred['selected_model'])
                 elif translated_service == "DeeLX":
                     settings.setValue(f"{translated_service}_self_hosted", cred['self_hosted'])
                     settings.setValue(f"{translated_service}_url", cred['url'])
@@ -278,8 +289,21 @@ class SettingsPage(QtWidgets.QWidget):
 
         # Load tools settings
         settings.beginGroup('tools')
-        raw_translator = settings.value('translator', 'GPT-4.1')
+        raw_translator = settings.value('translator', 'Google Gemini')
         translator = TRANSLATOR_MIGRATIONS.get(raw_translator, raw_translator)
+        # If the loaded translator is an old model name (e.g. GPT-4.1), map it to a platform
+        MODEL_TO_PLATFORM = {
+            "GPT-4.1": "Open AI GPT",
+            "GPT-4.1-mini": "Open AI GPT",
+            "Gemini-2.5-Flash": "Google Gemini",
+            "Gemini-2.5-Pro": "Google Gemini",
+            "Deepseek-v3": "Deepseek",
+            "Claude-4.5-Sonnet": "Anthropic Claude",
+            "Claude-4.5-Haiku": "Anthropic Claude",
+        }
+        if translator in MODEL_TO_PLATFORM:
+            translator = MODEL_TO_PLATFORM[translator]
+            
         translated_translator = self.ui.reverse_mappings.get(translator, translator)
         self.ui.translator_combo.setCurrentText(translated_translator)
 
@@ -370,8 +394,14 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "Yandex":
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
                     self.ui.credential_widgets[f"{translated_service}_folder_id"].setText(settings.value(f"{translated_service}_folder_id", ''))
-                elif translated_service == "Google Gemini":
+                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek"]:
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
+                    selected_model = settings.value(f"{translated_service}_selected_model", '')
+                    if selected_model:
+                        model_list_widget = self.ui.credential_widgets[f"{translated_service}_model_list"]
+                        model_list_widget.clear()
+                        model_list_widget.addItem(selected_model)
+                        model_list_widget.setCurrentRow(0)
                 elif translated_service == "DeeLX":
                     self.ui.credential_widgets[f"{translated_service}_self_hosted"].setChecked(settings.value(f"{translated_service}_self_hosted", False, type=bool))
                     self.ui.credential_widgets[f"{translated_service}_url"].setText(settings.value(f"{translated_service}_url", ''))

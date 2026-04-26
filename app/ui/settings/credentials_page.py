@@ -8,9 +8,13 @@ from ..dayu_widgets.message import MMessage
 from ..dayu_widgets.loading import MLoadingWrapper
 from .utils import set_label_width
 from modules.translation.models import ModelManager
+from app.account.auth.token_storage import get_token
 
 class PlatformCredentialWidget(QtWidgets.QWidget):
     sig_credentials_changed = QtCore.Signal()
+    sig_sign_in_clicked = QtCore.Signal()
+    sig_sign_out_clicked = QtCore.Signal()
+    sig_buy_credits_clicked = QtCore.Signal()
 
     def __init__(self, platform_display_name, platform_internal_name, parent=None):
         super().__init__(parent)
@@ -37,6 +41,8 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
             self._add_yandex_fields(layout)
         elif self.platform_internal_name == "DeeLX":
             self._add_deelx_fields(layout)
+        elif self.platform_internal_name == "Comic Translate (Official)":
+            self._add_official_fields(layout)
         else:
             # Standard LLM platforms (Gemini, GPT, OpenRouter, Claude, Deepseek, DeepL, etc.)
             self._add_standard_llm_fields(layout)
@@ -122,6 +128,80 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         self.widgets["Yandex_api_key"] = self._add_line_edit(layout, self.tr("Secret Key"), password=True)
         self.widgets["Yandex_folder_id"] = self._add_line_edit(layout, self.tr("Folder ID"))
 
+    def _add_official_fields(self, layout):
+        # Safety Warning
+        warning_text = self.tr(
+            "‼️ UnComicTranslate does not guarantee the safety of this platform. "
+            "We forked from the original project a long time ago. The official "
+            "login support is an independent option and is not associated with our project."
+        )
+        warning_label = MLabel(warning_text).secondary()
+        warning_label.setWordWrap(True)
+        warning_label.setStyleSheet("color: #ff4d4f; font-size: 11px;") # Red color
+        layout.addWidget(warning_label)
+        layout.addSpacing(15)
+
+        # 1. Account Section (Integrated)
+        layout.addWidget(MLabel(self.tr("Official Account")).strong())
+        
+        # Logged Out State UI
+        self.official_logged_out_widget = QtWidgets.QWidget()
+        lo_layout = QtWidgets.QVBoxLayout(self.official_logged_out_widget)
+        lo_layout.setContentsMargins(0, 0, 0, 0)
+        self.sign_in_btn = MPushButton(self.tr("Sign In to Official Account")).primary().small()
+        self.sign_in_btn.clicked.connect(self.sig_sign_in_clicked.emit)
+        lo_layout.addWidget(self.sign_in_btn)
+        layout.addWidget(self.official_logged_out_widget)
+        
+        # Logged In State UI
+        self.official_logged_in_widget = QtWidgets.QWidget()
+        li_layout = QtWidgets.QVBoxLayout(self.official_logged_in_widget)
+        li_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.official_email_label = MLabel("...").secondary()
+        self.official_credits_label = MLabel("...").secondary()
+        li_layout.addWidget(self.official_email_label)
+        li_layout.addWidget(self.official_credits_label)
+        
+        btn_layout = QtWidgets.QHBoxLayout()
+        self.sign_out_btn = MPushButton(self.tr("Sign Out")).small()
+        self.sign_out_btn.clicked.connect(self.sig_sign_out_clicked.emit)
+        self.buy_credits_btn = MPushButton(self.tr("Buy Credits")).small()
+        self.buy_credits_btn.clicked.connect(self.sig_buy_credits_clicked.emit)
+        btn_layout.addWidget(self.buy_credits_btn)
+        btn_layout.addWidget(self.sign_out_btn)
+        btn_layout.addStretch(1)
+        li_layout.addLayout(btn_layout)
+        
+        layout.addWidget(self.official_logged_in_widget)
+        self.official_logged_in_widget.hide() # Default hidden
+
+        layout.addSpacing(15)
+        layout.addWidget(MLabel(self.tr("Translation Models")).strong())
+        
+        fetch_layout = QtWidgets.QHBoxLayout()
+        self.fetch_btn = MPushButton(self.tr("Fetch Models")).primary().small()
+        self.fetch_btn.clicked.connect(self._fetch_models)
+        fetch_layout.addWidget(self.fetch_btn)
+        fetch_layout.addStretch(1)
+        layout.addLayout(fetch_layout)
+        
+        layout.addSpacing(5)
+        layout.addWidget(MLabel(self.tr("Model List")).secondary())
+        
+        # Model Search Bar
+        self.model_search_input = MLineEdit().search().small()
+        self.model_search_input.setPlaceholderText(self.tr("Search models..."))
+        self.model_search_input.setFixedWidth(400)
+        self.model_search_input.textChanged.connect(self._filter_models)
+        layout.addWidget(self.model_search_input)
+        
+        self.model_list = QtWidgets.QListWidget()
+        self.model_list.setFixedHeight(150)
+        self.model_list.setFixedWidth(400)
+        layout.addWidget(self.model_list)
+        self.widgets["Comic Translate (Official)_model_list"] = self.model_list
+
     def _add_deelx_fields(self, layout):
         self.enabled_checkbox = MCheckBox(self.tr("Enabled"))
         layout.addWidget(self.enabled_checkbox)
@@ -135,7 +215,12 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         self.enabled_checkbox.toggled.connect(lambda: self.sig_credentials_changed.emit())
 
     def _fetch_models(self):
-        api_key = self.api_key_input.text()
+        # For Official platform, we use global token exclusively
+        if self.platform_internal_name == "Comic Translate (Official)":
+            api_key = get_token("access_token")
+        else:
+            api_key = self.api_key_input.text()
+
         if not api_key and self.platform_internal_name != "OpenRouter":
             MMessage.error(self.tr("Please enter an API Key first"), parent=self, duration=2)
             return
@@ -163,6 +248,8 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
                     models = ModelManager.fetch_anthropic_models(self.key)
                 elif self.platform == "Deepseek":
                     models = ModelManager.fetch_deepseek_models(self.key)
+                elif self.platform == "Comic Translate (Official)":
+                    models = ModelManager.fetch_official_models(self.key)
                 self.finished.emit(models)
 
         self.thread = FetchThread(self.platform_internal_name, api_key)
@@ -183,6 +270,10 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
 
 
 class CredentialsPage(QtWidgets.QWidget):
+    sig_sign_in_clicked = QtCore.Signal()
+    sig_sign_out_clicked = QtCore.Signal()
+    sig_buy_credits_clicked = QtCore.Signal()
+
     def __init__(self, services: list[str], value_mappings: dict[str, str], parent=None):
         super().__init__(parent)
         self.services = services
@@ -192,17 +283,25 @@ class CredentialsPage(QtWidgets.QWidget):
 
         # main layout
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         
+        # Global Header (Search + Save Keys)
+        self.global_header = QtWidgets.QWidget()
+        header_layout = QtWidgets.QVBoxLayout(self.global_header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+
         # Save Keys Checkbox
         self.save_keys_checkbox = MCheckBox(self.tr("Save Keys"))
-        main_layout.addWidget(self.save_keys_checkbox)
-        main_layout.addSpacing(10)
+        header_layout.addWidget(self.save_keys_checkbox)
+        header_layout.addSpacing(5)
 
         # Provider Search Bar
         self.provider_search_bar = MLineEdit().search().small()
         self.provider_search_bar.setPlaceholderText(self.tr("Search providers..."))
         self.provider_search_bar.textChanged.connect(self._filter_providers)
-        main_layout.addWidget(self.provider_search_bar)
+        header_layout.addWidget(self.provider_search_bar)
+        
+        main_layout.addWidget(self.global_header)
         main_layout.addSpacing(10)
 
         # Stacked Widget
@@ -239,6 +338,9 @@ class CredentialsPage(QtWidgets.QWidget):
             
             platform_widget = PlatformCredentialWidget(service_label, internal_name)
             platform_widget.sig_credentials_changed.connect(self.update_status_indicators)
+            platform_widget.sig_sign_in_clicked.connect(self.sig_sign_in_clicked.emit)
+            platform_widget.sig_sign_out_clicked.connect(self.sig_sign_out_clicked.emit)
+            platform_widget.sig_buy_credits_clicked.connect(self.sig_buy_credits_clicked.emit)
             
             # Add Back Button
             back_btn = MPushButton(text=self.tr("← Back to Providers")).small()
@@ -257,6 +359,15 @@ class CredentialsPage(QtWidgets.QWidget):
         self.grid_layout.setRowStretch(row + 1, 1)
         # Add horizontal stretch to the last column to push things left
         self.grid_layout.setColumnStretch(max_cols, 1)
+
+        # Connect page change signal after initialization to avoid early calls
+        self.stacked_widget.currentChanged.connect(self._on_page_changed)
+        # Initial update of indicators
+        self.update_status_indicators()
+
+    def _on_page_changed(self, index: int):
+        # Only show the global header (Search/Save) on the grid page (index 0)
+        self.global_header.setVisible(index == 0)
 
         # Initial update of indicators
         self.update_status_indicators()

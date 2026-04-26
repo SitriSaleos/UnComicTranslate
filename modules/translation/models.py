@@ -87,3 +87,17 @@ class ModelManager:
         except Exception as e:
             print(f"Error fetching Deepseek models: {e}")
             return ["deepseek-chat", "deepseek-reasoner"]
+    @staticmethod
+    def fetch_official_models(api_key: str) -> List[str]:
+        # The official API uses virtual model names. 
+        # These are extracted from the original project's supported translators.
+        return [
+            "Gemini-3.0-Flash",
+            "Gemini-2.5-Pro",
+            "GPT-4.1",
+            "GPT-4.1-mini",
+            "Claude-4.6-Sonnet",
+            "Claude-4.5-Haiku",
+            "Deepseek-v3",
+            "Deepseek-R1"
+        ]

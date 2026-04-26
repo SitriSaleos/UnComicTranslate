@@ -13,6 +13,7 @@ from .llm.deepseek import DeepseekTranslation
 from .llm.custom import CustomTranslation
 from .llm.openrouter import OpenRouterTranslation
 from .deelx import DeeLXTranslation
+from .official import OfficialTranslation
 
 
 class TranslationFactory:
@@ -36,7 +37,8 @@ class TranslationFactory:
         "Gemini": GeminiTranslation,
         "Deepseek": DeepseekTranslation,
         "OpenRouter": OpenRouterTranslation,
-        "Custom": CustomTranslation
+        "Custom": CustomTranslation,
+        "Comic Translate (Official)": OfficialTranslation
     }
     
     # Default engines for fallback

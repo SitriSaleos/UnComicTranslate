@@ -62,7 +62,7 @@ class SettingsPageUI(QtWidgets.QWidget):
         self.alignment = [self.tr("Left"), self.tr("Center"), self.tr("Right")]
 
         self.credential_services = [self.tr("Google Gemini"), self.tr("OpenRouter"), self.tr("DeeLX"), self.tr("Custom"), self.tr("Deepseek"), self.tr("Open AI GPT"), self.tr("Microsoft Azure"), self.tr("Google Cloud"), 
-                                    self.tr("DeepL"), self.tr("Anthropic Claude"), self.tr("Yandex")]
+                                    self.tr("DeepL"), self.tr("Anthropic Claude"), self.tr("Yandex"), self.tr("Comic Translate (Official)")]
         
         self.supported_translators = [
             self.tr("Google Gemini"), 
@@ -75,7 +75,8 @@ class SettingsPageUI(QtWidgets.QWidget):
             self.tr("Microsoft Translator"), 
             self.tr("DeepL"), 
             self.tr("DeeLX"), 
-            self.tr("Custom")
+            self.tr("Custom"),
+            self.tr("Comic Translate (Official)")
         ]
         
         self.languages = ['English', '한국어', 'Français', '日本語', 
@@ -233,12 +234,12 @@ class SettingsPageUI(QtWidgets.QWidget):
         self.from_file_types = self.export_page.from_file_types
 
         # Add pages to stacked widget (order must match navbar order)
-        self.stacked_widget.addWidget(self.personalization_page)
-        self.stacked_widget.addWidget(self.tools_page)
-        self.stacked_widget.addWidget(self.credentials_page)
-        self.stacked_widget.addWidget(self.llms_page)
-        self.stacked_widget.addWidget(self.text_rendering_page)
-        self.stacked_widget.addWidget(self.export_page)
+        self.stacked_widget.addWidget(self.personalization_page) # 0
+        self.stacked_widget.addWidget(self.tools_page)           # 1
+        self.stacked_widget.addWidget(self.credentials_page)     # 2
+        self.stacked_widget.addWidget(self.llms_page)            # 3
+        self.stacked_widget.addWidget(self.text_rendering_page)  # 4
+        self.stacked_widget.addWidget(self.export_page)          # 5
 
         settings_layout = QtWidgets.QHBoxLayout()
         

@@ -1,11 +1,16 @@
-import os, shutil
+from PySide6 import QtWidgets, QtGui, QtCore
+from PySide6.QtCore import Signal, QSettings, QUrl
+from PySide6.QtGui import QFont, QFontDatabase, QDesktopServices
+import json
+import logging
 from dataclasses import asdict, is_dataclass
 
-from PySide6 import QtWidgets, QtGui
-from PySide6.QtCore import Signal, QSettings
-from PySide6.QtGui import QFont, QFontDatabase
-
 from .settings_ui import SettingsPageUI
+from app.account.auth.auth_client import AuthClient, USER_INFO_GROUP, \
+    EMAIL_KEY, TIER_KEY, CREDITS_KEY, MONTHLY_CREDITS_KEY
+from app.account.config import API_BASE_URL, FRONTEND_BASE_URL
+
+logger = logging.getLogger(__name__)
 
 # Dictionary to map old model names to the newest versions in settings
 OCR_MIGRATIONS = {
@@ -40,6 +45,20 @@ class SettingsPage(QtWidgets.QWidget):
         self.ui = SettingsPageUI(self)
         self._setup_connections()
         self._loading_settings = False
+        
+        # Initialize AuthClient
+        self.auth_client = AuthClient(API_BASE_URL, FRONTEND_BASE_URL)
+        self.auth_client.auth_success.connect(self.handle_auth_success)
+        self.auth_client.auth_error.connect(self.handle_auth_error)
+        self.auth_client.auth_cancelled.connect(self.handle_auth_cancelled)
+        self.auth_client.request_login_view.connect(self.show_login_view)
+        self.auth_client.logout_success.connect(self.handle_logout_success)
+        self.auth_client.session_check_finished.connect(self.handle_session_check_finished)
+
+        self.user_email = None
+        self.user_tier = None
+        self.user_credits = None
+        self.user_monthly_credits = None
 
         # Use the Settings UI directly; inner content is scrollable on the
         # right side (see settings_ui.py). This keeps the left navbar fixed.
@@ -53,6 +72,11 @@ class SettingsPage(QtWidgets.QWidget):
         self.ui.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         self.ui.lang_combo.currentTextChanged.connect(self.on_language_changed)
         self.ui.font_browser.sig_files_changed.connect(self.import_font)
+        
+        # Account connections (Now integrated into Credentials)
+        self.ui.credentials_page.sig_sign_in_clicked.connect(self.start_sign_in)
+        self.ui.credentials_page.sig_sign_out_clicked.connect(self.sign_out)
+        self.ui.credentials_page.sig_buy_credits_clicked.connect(self.open_pricing_page)
 
     def on_theme_changed(self, theme: str):
         self.theme_changed.emit(theme)
@@ -402,6 +426,14 @@ class SettingsPage(QtWidgets.QWidget):
                         model_list_widget.clear()
                         model_list_widget.addItem(selected_model)
                         model_list_widget.setCurrentRow(0)
+                elif translated_service == "Comic Translate (Official)":
+                    # For Official, we only load the selected model
+                    selected_model = settings.value(f"{translated_service}_selected_model", '')
+                    if selected_model:
+                        model_list_widget = self.ui.credential_widgets[f"{translated_service}_model_list"]
+                        model_list_widget.clear()
+                        model_list_widget.addItem(selected_model)
+                        model_list_widget.setCurrentRow(0)
                 elif translated_service == "DeeLX":
                     self.ui.credential_widgets[f"{translated_service}_self_hosted"].setChecked(settings.value(f"{translated_service}_self_hosted", False, type=bool))
                     self.ui.credential_widgets[f"{translated_service}_url"].setText(settings.value(f"{translated_service}_url", ''))
@@ -409,6 +441,14 @@ class SettingsPage(QtWidgets.QWidget):
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
         settings.endGroup()
         self.ui.credentials_page.update_status_indicators()
+        
+        # Load user info and update account view
+        self._load_user_info_from_settings()
+        self._update_account_view()
+        
+        # Check session if logged in
+        if self.is_logged_in():
+            self.auth_client.check_session_async()
 
         self._loading_settings = False
 
@@ -441,6 +481,122 @@ class SettingsPage(QtWidgets.QWidget):
         
         # If not a file path or loading failed, treat as font family name
         return font_input
+
+    def start_sign_in(self):
+        """Initiates the authentication flow."""
+        official_widget = self.ui.credentials_page.platform_widgets.get("Comic Translate (Official)")
+        if official_widget:
+            official_widget.sign_in_btn.setText(self.tr("Signing in..."))
+            official_widget.sign_in_btn.setEnabled(False)
+        self.auth_client.start_auth_flow()
+
+    def cancel_sign_in(self):
+        """Cancels the active authentication flow."""
+        self.auth_client.cancel_auth_flow()
+
+    def show_login_view(self, url: str):
+        """Opens the login URL in the system browser."""
+        QDesktopServices.openUrl(QUrl(url))
+
+    def handle_auth_success(self, user_info: dict):
+        """Handles successful authentication."""
+        self._reset_sign_in_button()
+        self.user_email = user_info.get('email')
+        self.user_tier = user_info.get('tier')
+        self.user_credits = user_info.get('credits')
+        self.user_monthly_credits = user_info.get('monthly_credits')
+        self._save_user_info_to_settings()
+        self._update_account_view()
+
+    def handle_auth_error(self, error_message: str):
+        """Handles authentication errors."""
+        self._reset_sign_in_button()
+        if "cancelled" not in error_message.lower():
+            QtWidgets.QMessageBox.warning(self, self.tr("Sign In Error"), error_message)
+
+    def handle_auth_cancelled(self):
+        """Handles the signal emitted when the auth flow is cancelled."""
+        self._reset_sign_in_button()
+
+    def _reset_sign_in_button(self):
+        official_widget = self.ui.credentials_page.platform_widgets.get("Comic Translate (Official)")
+        if official_widget:
+            official_widget.sign_in_btn.setText(self.tr("Sign In to Official Account"))
+            try:
+                official_widget.sign_in_btn.setEnabled(True)
+            except Exception: pass
+
+    def sign_out(self):
+        """Initiates the sign-out process."""
+        if QtWidgets.QMessageBox.question(self, self.tr("Sign Out"), self.tr("Are you sure?")) == QtWidgets.QMessageBox.Yes:
+            self.auth_client.logout()
+
+    def handle_logout_success(self):
+        """Handles successful logout."""
+        self.user_email = None
+        self.user_tier = None
+        self.user_credits = None
+        self.user_monthly_credits = None
+        self._update_account_view()
+
+    def handle_session_check_finished(self, is_valid: bool):
+        if not is_valid:
+            self.auth_client.logout()
+
+    def is_logged_in(self):
+        return self.auth_client.is_authenticated()
+
+    def _update_account_view(self):
+        """Updates the UI elements on the Credentials -> Official page based on login state."""
+        official_widget = self.ui.credentials_page.platform_widgets.get("Comic Translate (Official)")
+        if not official_widget:
+            return
+
+        if self.is_logged_in():
+            official_widget.official_logged_out_widget.hide()
+            official_widget.official_logged_in_widget.show()
+            
+            official_widget.official_email_label.setText(f"{self.tr('Email:')} {self.user_email or self.tr('N/A')}")
+            
+            credits_text = self.tr("N/A")
+            if isinstance(self.user_credits, dict):
+                total = self.user_credits.get('total', 0)
+                credits_text = f"{total:,}"
+            elif self.user_credits is not None:
+                credits_text = f"{int(self.user_credits):,}"
+            
+            official_widget.official_credits_label.setText(f"{self.tr('Credits:')} {credits_text}")
+        else:
+            official_widget.official_logged_in_widget.hide()
+            official_widget.official_logged_out_widget.show()
+            official_widget.sign_in_btn.setText(self.tr("Sign In to Official Account"))
+
+    def open_pricing_page(self):
+        QDesktopServices.openUrl(QUrl(f"{FRONTEND_BASE_URL}/pricing/"))
+
+    def _load_user_info_from_settings(self):
+        settings = QSettings("UnComicLabs", "UnComicTranslate")
+        settings.beginGroup(USER_INFO_GROUP)
+        self.user_email = settings.value(EMAIL_KEY, None)
+        self.user_tier = settings.value(TIER_KEY, None)
+        self.user_credits = settings.value(CREDITS_KEY, None)
+        self.user_monthly_credits = settings.value(MONTHLY_CREDITS_KEY, None)
+        if isinstance(self.user_credits, str):
+            try: self.user_credits = json.loads(self.user_credits)
+            except Exception: pass
+        settings.endGroup()
+
+    def _save_user_info_to_settings(self):
+        settings = QSettings("UnComicLabs", "UnComicTranslate")
+        settings.beginGroup(USER_INFO_GROUP)
+        settings.setValue(EMAIL_KEY, self.user_email)
+        settings.setValue(TIER_KEY, self.user_tier)
+        settings.setValue(MONTHLY_CREDITS_KEY, self.user_monthly_credits)
+        if isinstance(self.user_credits, dict):
+            settings.setValue(CREDITS_KEY, json.dumps(self.user_credits))
+        else:
+            settings.setValue(CREDITS_KEY, self.user_credits)
+        settings.endGroup()
 
 
 

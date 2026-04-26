@@ -29,4 +29,6 @@ dependencies = [
     "shapely>=2.1.1",
     "six>=1.16.0",
     "wget>=3.2",
+    "keyring>=24.3.0",
+    "opencv-python>=4.10.0.84",
 ]

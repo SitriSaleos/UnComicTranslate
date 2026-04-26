@@ -408,6 +408,7 @@ class SettingsPage(QtWidgets.QWidget):
                 else:
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
         settings.endGroup()
+        self.ui.credentials_page.update_status_indicators()
 
         self._loading_settings = False
 

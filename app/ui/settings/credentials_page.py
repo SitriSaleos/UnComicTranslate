@@ -10,6 +10,8 @@ from .utils import set_label_width
 from modules.translation.models import ModelManager
 
 class PlatformCredentialWidget(QtWidgets.QWidget):
+    sig_credentials_changed = QtCore.Signal()
+
     def __init__(self, platform_display_name, platform_internal_name, parent=None):
         super().__init__(parent)
         self.platform_display_name = platform_display_name
@@ -51,6 +53,8 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         prefix.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         edit.set_prefix_widget(prefix)
         layout.addWidget(edit)
+        # Notify when text changes (use lambda to ignore 'text' argument)
+        edit.textChanged.connect(lambda: self.sig_credentials_changed.emit())
         return edit
 
     def _add_standard_llm_fields(self, layout):
@@ -74,11 +78,30 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
             
             layout.addSpacing(5)
             layout.addWidget(MLabel(self.tr("Model List")).secondary())
+            
+            # Model Search Bar
+            self.model_search_input = MLineEdit().search().small()
+            self.model_search_input.setPlaceholderText(self.tr("Search models..."))
+            self.model_search_input.setFixedWidth(400)
+            self.model_search_input.textChanged.connect(self._filter_models)
+            layout.addWidget(self.model_search_input)
+            
             self.model_list = QtWidgets.QListWidget()
             self.model_list.setFixedHeight(200)
             self.model_list.setFixedWidth(400)
             layout.addWidget(self.model_list)
             self.widgets[f"{self.platform_internal_name}_model_list"] = self.model_list
+
+    def _filter_models(self, text: str):
+        if not hasattr(self, 'model_list'):
+            return
+        for i in range(self.model_list.count()):
+            item = self.model_list.item(i)
+            # Case-insensitive search
+            if text.lower() in item.text().lower():
+                item.setHidden(False)
+            else:
+                item.setHidden(True)
 
     def _add_azure_fields(self, layout):
         layout.addWidget(MLabel(self.tr("OCR")).secondary())
@@ -109,11 +132,12 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         
         self.url_input.setEnabled(self.enabled_checkbox.isChecked())
         self.enabled_checkbox.toggled.connect(self.url_input.setEnabled)
+        self.enabled_checkbox.toggled.connect(lambda: self.sig_credentials_changed.emit())
 
     def _fetch_models(self):
         api_key = self.api_key_input.text()
         if not api_key and self.platform_internal_name != "OpenRouter":
-            MMessage.error(self.tr("Please enter an API Key first"), parent=self)
+            MMessage.error(self.tr("Please enter an API Key first"), parent=self, duration=2)
             return
 
         # Show loading indicator (optional, but good UX)
@@ -150,12 +174,12 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         self.fetch_btn.setText(self.tr("Fetch Models"))
         
         if not models:
-            MMessage.warning(self.tr("No models found or error occurred"), parent=self)
+            MMessage.warning(self.tr("No models found or error occurred"), parent=self, duration=2)
             return
 
         self.model_list.clear()
         self.model_list.addItems(models)
-        MMessage.success(self.tr(f"Fetched {len(models)} models"), parent=self)
+        MMessage.success(self.tr(f"Fetched {len(models)} models"), parent=self, duration=2)
 
 
 class CredentialsPage(QtWidgets.QWidget):
@@ -174,6 +198,13 @@ class CredentialsPage(QtWidgets.QWidget):
         main_layout.addWidget(self.save_keys_checkbox)
         main_layout.addSpacing(10)
 
+        # Provider Search Bar
+        self.provider_search_bar = MLineEdit().search().small()
+        self.provider_search_bar.setPlaceholderText(self.tr("Search providers..."))
+        self.provider_search_bar.textChanged.connect(self._filter_providers)
+        main_layout.addWidget(self.provider_search_bar)
+        main_layout.addSpacing(10)
+
         # Stacked Widget
         self.stacked_widget = QtWidgets.QStackedWidget()
         main_layout.addWidget(self.stacked_widget)
@@ -185,6 +216,7 @@ class CredentialsPage(QtWidgets.QWidget):
         self.grid_layout.setSpacing(15)
         self.stacked_widget.addWidget(self.grid_page)
 
+        self.provider_buttons = []
         row = 0
         col = 0
         max_cols = 3
@@ -198,14 +230,15 @@ class CredentialsPage(QtWidgets.QWidget):
             # Capture the index for the closure
             btn.clicked.connect(lambda checked=False, idx=i+1: self.stacked_widget.setCurrentIndex(idx))
             
+            self.provider_buttons.append((service_label, btn))
             self.grid_layout.addWidget(btn, row, col)
             col += 1
             if col >= max_cols:
                 col = 0
                 row += 1
             
-            # Create Platform Settings Widget
             platform_widget = PlatformCredentialWidget(service_label, internal_name)
+            platform_widget.sig_credentials_changed.connect(self.update_status_indicators)
             
             # Add Back Button
             back_btn = MPushButton(text=self.tr("← Back to Providers")).small()
@@ -222,6 +255,66 @@ class CredentialsPage(QtWidgets.QWidget):
 
         # Add vertical stretch to push the grid to the top
         self.grid_layout.setRowStretch(row + 1, 1)
-        # Add horizontal stretch to push the grid to the left
+        # Add horizontal stretch to the last column to push things left
         self.grid_layout.setColumnStretch(max_cols, 1)
+
+        # Initial update of indicators
+        self.update_status_indicators()
+
+    def _filter_providers(self, text: str):
+        # Clear current grid items (without deleting widgets)
+        for i in reversed(range(self.grid_layout.count())):
+            item = self.grid_layout.takeAt(i)
+            # We don't need to do anything with 'item' as the widgets are still owned by grid_page
+            
+        row = 0
+        col = 0
+        max_cols = 3
+        
+        for label, btn in self.provider_buttons:
+            if text.lower() in label.lower():
+                btn.show()
+                self.grid_layout.addWidget(btn, row, col)
+                col += 1
+                if col >= max_cols:
+                    col = 0
+                    row += 1
+            else:
+                btn.hide()
+        
+        # Re-apply stretch
+        self.grid_layout.setRowStretch(row + 1, 1)
+        for r in range(row + 1):
+            self.grid_layout.setRowStretch(r, 0)
+
+    def update_status_indicators(self):
+        for label, btn in self.provider_buttons:
+            internal_name = self.value_mappings.get(label, label)
+            widget = self.platform_widgets.get(internal_name)
+            if not widget: continue
+            
+            is_configured = False
+            # Check primary API key or custom fields
+            if internal_name == "Microsoft Azure":
+                ocr_key = widget.widgets.get("Microsoft Azure_api_key_ocr")
+                tr_key = widget.widgets.get("Microsoft Azure_api_key_translator")
+                if (ocr_key and ocr_key.text().strip()) or (tr_key and tr_key.text().strip()):
+                    is_configured = True
+            elif internal_name == "DeeLX":
+                url = widget.widgets.get("DeeLX_url")
+                if url and url.text().strip():
+                    is_configured = True
+            elif internal_name == "Custom":
+                url = widget.widgets.get("Custom_api_url")
+                if url and url.text().strip():
+                    is_configured = True
+            else:
+                key_input = widget.widgets.get(f"{internal_name}_api_key")
+                if key_input and hasattr(key_input, 'text') and key_input.text().strip():
+                    is_configured = True
+            
+            prefix = "🟢 " if is_configured else ""
+            # Remove existing prefix if any
+            clean_label = label.replace("🟢 ", "")
+            btn.setText(f"{prefix}{clean_label}")
 

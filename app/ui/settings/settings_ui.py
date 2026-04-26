@@ -287,7 +287,7 @@ class SettingsPageUI(QtWidgets.QWidget):
         for index, setting in enumerate([
             {"title": self.tr("Personalization"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Tools"), "avatar": MPixmap(".svg")},
-            {"title": self.tr("Credentials"), "avatar": MPixmap(".svg")},
+            {"title": self.tr("Model"), "avatar": MPixmap(".svg")},
             {"title": self.tr("LLMs"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Text Rendering"), "avatar": MPixmap(".svg")},
             {"title": self.tr("Export"), "avatar": MPixmap(".svg")},

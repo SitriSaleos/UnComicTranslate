@@ -88,6 +88,8 @@ The following features require API keys:
 
 Configure API keys in Settings > Credentials
 
+![Credentials Settings](resources/img/Screenshot_Credentials.png)
+
 ### Getting API Keys
 
 **OpenAI (GPT)**

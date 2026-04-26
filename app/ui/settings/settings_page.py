@@ -150,11 +150,16 @@ class SettingsPage(QtWidgets.QWidget):
             elif internal_service == "Yandex":
                 creds['api_key'] = _get_val("Yandex_api_key")
                 creds['folder_id'] = _get_val("Yandex_folder_id")
+            elif internal_service == "Ollama":
+                creds['api_url'] = _get_val("Ollama_api_url")
+                creds['selected_model'] = _get_val("Ollama_model_list")
             elif internal_service == "DeeLX":
                 creds.update({
                     'self_hosted': _get_val("DeeLX_self_hosted"),
                     'url': _get_val("DeeLX_url"),
                 })
+            elif internal_service == "Googletrans":
+                pass
             else:
                 # Standard LLM platforms
                 creds['api_key'] = _get_val(f"{internal_service}_api_key")
@@ -283,6 +288,10 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "Yandex":
                     settings.setValue(f"{translated_service}_api_key", cred['api_key'])
                     settings.setValue(f"{translated_service}_folder_id", cred['folder_id'])
+                elif translated_service == "Ollama":
+                    settings.setValue(f"{translated_service}_api_url", cred['api_url'])
+                    if 'selected_model' in cred and cred['selected_model']:
+                        settings.setValue(f"{translated_service}_selected_model", cred['selected_model'])
                 elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek"]:
                     settings.setValue(f"{translated_service}_api_key", cred['api_key'])
                     if 'selected_model' in cred and cred['selected_model']:
@@ -290,6 +299,8 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "DeeLX":
                     settings.setValue(f"{translated_service}_self_hosted", cred['self_hosted'])
                     settings.setValue(f"{translated_service}_url", cred['url'])
+                elif translated_service == "Googletrans":
+                    pass
                 else:
                     settings.setValue(f"{translated_service}_api_key", cred['api_key'])
         else:
@@ -418,6 +429,14 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "Yandex":
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
                     self.ui.credential_widgets[f"{translated_service}_folder_id"].setText(settings.value(f"{translated_service}_folder_id", ''))
+                elif translated_service == "Ollama":
+                    self.ui.credential_widgets[f"{translated_service}_api_url"].setText(settings.value(f"{translated_service}_api_url", ''))
+                    selected_model = settings.value(f"{translated_service}_selected_model", '')
+                    if selected_model:
+                        model_list_widget = self.ui.credential_widgets[f"{translated_service}_model_list"]
+                        model_list_widget.clear()
+                        model_list_widget.addItem(selected_model)
+                        model_list_widget.setCurrentRow(0)
                 elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek"]:
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
                     selected_model = settings.value(f"{translated_service}_selected_model", '')
@@ -437,6 +456,8 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "DeeLX":
                     self.ui.credential_widgets[f"{translated_service}_self_hosted"].setChecked(settings.value(f"{translated_service}_self_hosted", False, type=bool))
                     self.ui.credential_widgets[f"{translated_service}_url"].setText(settings.value(f"{translated_service}_url", ''))
+                elif translated_service == "Googletrans":
+                    pass
                 else:
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
         settings.endGroup()
@@ -570,6 +591,8 @@ class SettingsPage(QtWidgets.QWidget):
             official_widget.official_logged_in_widget.hide()
             official_widget.official_logged_out_widget.show()
             official_widget.sign_in_btn.setText(self.tr("Sign In to Official Account"))
+        
+        self.ui.credentials_page.update_status_indicators()
 
     def open_pricing_page(self):
         QDesktopServices.openUrl(QUrl(f"{FRONTEND_BASE_URL}/pricing/"))

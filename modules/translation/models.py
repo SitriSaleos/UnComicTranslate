@@ -101,3 +101,19 @@ class ModelManager:
             "Deepseek-v3",
             "Deepseek-R1"
         ]
+
+    @staticmethod
+    def fetch_ollama_models(base_url: str) -> List[str]:
+        """Fetch models from local Ollama instance."""
+        try:
+            # Try to use the base URL if provided, otherwise default to localhost
+            url = base_url.rstrip('/') if base_url else "http://localhost:11434"
+            # Ollama tags endpoint
+            response = requests.get(f"{url}/api/tags", timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            models = [m['name'] for m in data.get('models', [])]
+            return sorted(models)
+        except Exception as e:
+            print(f"Error fetching Ollama models: {e}")
+            return []

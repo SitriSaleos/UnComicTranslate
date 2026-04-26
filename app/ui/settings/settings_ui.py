@@ -61,15 +61,17 @@ class SettingsPageUI(QtWidgets.QWidget):
         self.themes = [self.tr('Dark'), self.tr('Light')]
         self.alignment = [self.tr("Left"), self.tr("Center"), self.tr("Right")]
 
-        self.credential_services = [self.tr("Google Gemini"), self.tr("OpenRouter"), self.tr("DeeLX"), self.tr("Custom"), self.tr("Deepseek"), self.tr("Open AI GPT"), self.tr("Microsoft Azure"), self.tr("Google Cloud"), 
+        self.credential_services = [self.tr("Google Gemini"), self.tr("OpenRouter"), self.tr("Ollama"), self.tr("Googletrans"), self.tr("DeeLX"), self.tr("Custom"), self.tr("Deepseek"), self.tr("Open AI GPT"), self.tr("Microsoft Azure"), self.tr("Google Cloud"), 
                                     self.tr("DeepL"), self.tr("Anthropic Claude"), self.tr("Yandex"), self.tr("Comic Translate (Official)")]
         
         self.supported_translators = [
             self.tr("Google Gemini"), 
             self.tr("Open AI GPT"), 
             self.tr("OpenRouter"), 
+            self.tr("Ollama"),
             self.tr("Anthropic Claude"), 
             self.tr("Deepseek"), 
+            self.tr("Googletrans"),
             self.tr("Yandex"), 
             self.tr("Google Translate"), 
             self.tr("Microsoft Translator"), 
@@ -116,6 +118,7 @@ class SettingsPageUI(QtWidgets.QWidget):
             self.tr("Microsoft Translator"): "Microsoft Translator",
             self.tr("DeepL"): "DeepL",
             self.tr("DeeLX"): "DeeLX",
+            self.tr("Googletrans"): "Googletrans",
             self.tr("Custom"): "Custom",
 
             # OCR mappings
@@ -150,6 +153,7 @@ class SettingsPageUI(QtWidgets.QWidget):
             self.tr("OpenRouter"): "OpenRouter",
             self.tr("DeepL"): "DeepL",
             self.tr("Anthropic Claude"): "Anthropic Claude",
+            self.tr("Ollama"): "Ollama",
             self.tr("Yandex"): "Yandex",
         }
 

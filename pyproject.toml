@@ -31,4 +31,5 @@ dependencies = [
     "wget>=3.2",
     "keyring>=24.3.0",
     "opencv-python>=4.10.0.84",
+    "googletrans==4.0.0-rc1",
 ]

@@ -3,6 +3,7 @@ import hashlib
 
 from .base import TranslationEngine
 from .google import GoogleTranslation
+from .googletrans_provider import GoogletransTranslation
 from .microsoft import MicrosoftTranslation
 from .deepl import DeepLTranslation
 from .yandex import YandexTranslation
@@ -12,6 +13,7 @@ from .llm.gemini import GeminiTranslation
 from .llm.deepseek import DeepseekTranslation
 from .llm.custom import CustomTranslation
 from .llm.openrouter import OpenRouterTranslation
+from .llm.ollama import OllamaTranslation
 from .deelx import DeeLXTranslation
 from .official import OfficialTranslation
 
@@ -24,6 +26,7 @@ class TranslationFactory:
     # Map traditional translation services to their engine classes
     TRADITIONAL_ENGINES = {
         "Google Translate": GoogleTranslation,
+        "Googletrans": GoogletransTranslation,
         "Microsoft Translator": MicrosoftTranslation,
         "DeepL": DeepLTranslation,
         "Yandex": YandexTranslation,
@@ -37,6 +40,7 @@ class TranslationFactory:
         "Gemini": GeminiTranslation,
         "Deepseek": DeepseekTranslation,
         "OpenRouter": OpenRouterTranslation,
+        "Ollama": OllamaTranslation,
         "Custom": CustomTranslation,
         "Comic Translate (Official)": OfficialTranslation
     }

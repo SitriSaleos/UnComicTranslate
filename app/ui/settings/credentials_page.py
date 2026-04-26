@@ -41,6 +41,8 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
             self._add_yandex_fields(layout)
         elif self.platform_internal_name == "DeeLX":
             self._add_deelx_fields(layout)
+        elif self.platform_internal_name == "Ollama":
+            self._add_ollama_fields(layout)
         elif self.platform_internal_name == "Comic Translate (Official)":
             self._add_official_fields(layout)
         else:
@@ -127,6 +129,36 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
     def _add_yandex_fields(self, layout):
         self.widgets["Yandex_api_key"] = self._add_line_edit(layout, self.tr("Secret Key"), password=True)
         self.widgets["Yandex_folder_id"] = self._add_line_edit(layout, self.tr("Folder ID"))
+
+    def _add_ollama_fields(self, layout):
+        self.url_input = self._add_line_edit(layout, self.tr("Base URL"))
+        self.url_input.setPlaceholderText("http://localhost:11434")
+        self.widgets["Ollama_api_url"] = self.url_input
+        
+        layout.addSpacing(15)
+        
+        fetch_layout = QtWidgets.QHBoxLayout()
+        self.fetch_btn = MPushButton(self.tr("Fetch Models")).primary().small()
+        self.fetch_btn.clicked.connect(self._fetch_models)
+        fetch_layout.addWidget(self.fetch_btn)
+        fetch_layout.addStretch(1)
+        layout.addLayout(fetch_layout)
+        
+        layout.addSpacing(5)
+        layout.addWidget(MLabel(self.tr("Model List")).secondary())
+        
+        # Model Search Bar
+        self.model_search_input = MLineEdit().search().small()
+        self.model_search_input.setPlaceholderText(self.tr("Search models..."))
+        self.model_search_input.setFixedWidth(400)
+        self.model_search_input.textChanged.connect(self._filter_models)
+        layout.addWidget(self.model_search_input)
+        
+        self.model_list = QtWidgets.QListWidget()
+        self.model_list.setFixedHeight(200)
+        self.model_list.setFixedWidth(400)
+        layout.addWidget(self.model_list)
+        self.widgets["Ollama_model_list"] = self.model_list
 
     def _add_official_fields(self, layout):
         # Safety Warning
@@ -218,10 +250,12 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         # For Official platform, we use global token exclusively
         if self.platform_internal_name == "Comic Translate (Official)":
             api_key = get_token("access_token")
+        elif self.platform_internal_name == "Ollama":
+            api_key = self.url_input.text() or "http://localhost:11434"
         else:
             api_key = self.api_key_input.text()
 
-        if not api_key and self.platform_internal_name != "OpenRouter":
+        if not api_key and self.platform_internal_name not in ["OpenRouter", "Ollama"]:
             MMessage.error(self.tr("Please enter an API Key first"), parent=self, duration=2)
             return
 
@@ -248,6 +282,8 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
                     models = ModelManager.fetch_anthropic_models(self.key)
                 elif self.platform == "Deepseek":
                     models = ModelManager.fetch_deepseek_models(self.key)
+                elif self.platform == "Ollama":
+                    models = ModelManager.fetch_ollama_models(self.key)
                 elif self.platform == "Comic Translate (Official)":
                     models = ModelManager.fetch_official_models(self.key)
                 self.finished.emit(models)
@@ -320,14 +356,20 @@ class CredentialsPage(QtWidgets.QWidget):
         col = 0
         max_cols = 3
 
+        page_index = 1
         for i, service_label in enumerate(self.services):
             internal_name = self.value_mappings.get(service_label, service_label)
             
             # Create Card/Button for Grid
             btn = MPushButton(text=service_label)
             btn.setFixedSize(160, 60) # Large button acting like a card
-            # Capture the index for the closure
-            btn.clicked.connect(lambda checked=False, idx=i+1: self.stacked_widget.setCurrentIndex(idx))
+            
+            if internal_name == "Googletrans":
+                btn.clicked.connect(self._show_googletrans_warning)
+            else:
+                # Capture the index for the closure
+                btn.clicked.connect(lambda checked=False, idx=page_index: self.stacked_widget.setCurrentIndex(idx))
+                page_index += 1
             
             self.provider_buttons.append((service_label, btn))
             self.grid_layout.addWidget(btn, row, col)
@@ -336,24 +378,25 @@ class CredentialsPage(QtWidgets.QWidget):
                 col = 0
                 row += 1
             
-            platform_widget = PlatformCredentialWidget(service_label, internal_name)
-            platform_widget.sig_credentials_changed.connect(self.update_status_indicators)
-            platform_widget.sig_sign_in_clicked.connect(self.sig_sign_in_clicked.emit)
-            platform_widget.sig_sign_out_clicked.connect(self.sig_sign_out_clicked.emit)
-            platform_widget.sig_buy_credits_clicked.connect(self.sig_buy_credits_clicked.emit)
-            
-            # Add Back Button
-            back_btn = MPushButton(text=self.tr("← Back to Providers")).small()
-            back_btn.setFixedWidth(150)
-            back_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
-            platform_widget.layout().insertWidget(0, back_btn)
-            platform_widget.layout().insertSpacing(1, 10)
-            
-            self.stacked_widget.addWidget(platform_widget)
-            self.platform_widgets[internal_name] = platform_widget
-            
-            # Merge widgets into the flat dictionary for SettingsPage to access
-            self.credential_widgets.update(platform_widget.widgets)
+            if internal_name != "Googletrans":
+                platform_widget = PlatformCredentialWidget(service_label, internal_name)
+                platform_widget.sig_credentials_changed.connect(self.update_status_indicators)
+                platform_widget.sig_sign_in_clicked.connect(self.sig_sign_in_clicked.emit)
+                platform_widget.sig_sign_out_clicked.connect(self.sig_sign_out_clicked.emit)
+                platform_widget.sig_buy_credits_clicked.connect(self.sig_buy_credits_clicked.emit)
+                
+                # Add Back Button
+                back_btn = MPushButton(text=self.tr("← Back to Providers")).small()
+                back_btn.setFixedWidth(150)
+                back_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
+                platform_widget.layout().insertWidget(0, back_btn)
+                platform_widget.layout().insertSpacing(1, 10)
+                
+                self.stacked_widget.addWidget(platform_widget)
+                self.platform_widgets[internal_name] = platform_widget
+                
+                # Merge widgets into the flat dictionary for SettingsPage to access
+                self.credential_widgets.update(platform_widget.widgets)
 
         # Add vertical stretch to push the grid to the top
         self.grid_layout.setRowStretch(row + 1, 1)
@@ -402,11 +445,15 @@ class CredentialsPage(QtWidgets.QWidget):
         for label, btn in self.provider_buttons:
             internal_name = self.value_mappings.get(label, label)
             widget = self.platform_widgets.get(internal_name)
-            if not widget: continue
             
             is_configured = False
+            
+            if internal_name == "Googletrans":
+                is_configured = True
+            elif not widget: 
+                continue
             # Check primary API key or custom fields
-            if internal_name == "Microsoft Azure":
+            elif internal_name == "Microsoft Azure":
                 ocr_key = widget.widgets.get("Microsoft Azure_api_key_ocr")
                 tr_key = widget.widgets.get("Microsoft Azure_api_key_translator")
                 if (ocr_key and ocr_key.text().strip()) or (tr_key and tr_key.text().strip()):
@@ -419,6 +466,15 @@ class CredentialsPage(QtWidgets.QWidget):
                 url = widget.widgets.get("Custom_api_url")
                 if url and url.text().strip():
                     is_configured = True
+            elif internal_name == "Ollama":
+                url = widget.widgets.get("Ollama_api_url")
+                model_list = widget.widgets.get("Ollama_model_list")
+                # Ollama is considered configured if either URL is set or a model is selected
+                if (url and url.text().strip()) or (model_list and model_list.currentItem()):
+                    is_configured = True
+            elif internal_name == "Comic Translate (Official)":
+                if get_token("access_token"):
+                    is_configured = True
             else:
                 key_input = widget.widgets.get(f"{internal_name}_api_key")
                 if key_input and hasattr(key_input, 'text') and key_input.text().strip():
@@ -428,4 +484,11 @@ class CredentialsPage(QtWidgets.QWidget):
             # Remove existing prefix if any
             clean_label = label.replace("🟢 ", "")
             btn.setText(f"{prefix}{clean_label}")
+
+    def _show_googletrans_warning(self):
+        MMessage.warning(
+            self.tr("⭕ This is an unofficial version. It might be blocked by Google or the quality might not be good."),
+            parent=self,
+            duration=5
+        )
 

@@ -222,7 +222,7 @@ class ComicTranslateUI(QtWidgets.QMainWindow):
         self.save_all_browser.setToolTip(self.tr("Export all Images"))
 
         self.web_export_button = MToolButton()
-        self.web_export_button.set_dayu_svg("fluent--code-js-24-regular.svg")
+        self.web_export_button.set_dayu_svg("code-icon.svg")
         self.web_export_button.setToolTip(self.tr("Export Detailed JSON for Web"))
 
         nav_tool_group = MToolButtonGroup(orientation=QtCore.Qt.Vertical, exclusive=True)

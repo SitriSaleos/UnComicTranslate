@@ -103,6 +103,21 @@ class ModelManager:
         ]
 
     @staticmethod
+    def fetch_9router_models(base_url: str, api_key: str) -> List[str]:
+        try:
+            url = base_url.rstrip('/') if base_url else "http://localhost:20128/v1"
+            url = f"{url}/models"
+            headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            models = [m['id'] for m in data.get('data', [])]
+            return sorted(models)
+        except Exception as e:
+            print(f"Error fetching 9Router models: {e}")
+            return []
+
+    @staticmethod
     def fetch_ollama_models(base_url: str) -> List[str]:
         """Fetch models from local Ollama instance."""
         try:

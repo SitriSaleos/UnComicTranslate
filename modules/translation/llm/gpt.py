@@ -103,7 +103,32 @@ class GPTTranslation(BaseLLMTranslation):
             )
             
             response.raise_for_status()
-            response_data = response.json()
+            
+            # Force utf-8 encoding to prevent Unicode errors (e.g., mojibake) 
+            # when headers don't specify charset=utf-8
+            response.encoding = 'utf-8'
+            
+            # Check if the response is a streaming SSE response
+            text_response = response.text.strip()
+            if text_response.startswith("data:"):
+                full_content = ""
+                for line in text_response.splitlines():
+                    if line.startswith("data: ") and line != "data: [DONE]":
+                        try:
+                            chunk = json.loads(line[6:])
+                            if "choices" in chunk and chunk["choices"]:
+                                delta = chunk["choices"][0].get("delta", {})
+                                if "content" in delta:
+                                    full_content += delta["content"]
+                        except Exception:
+                            pass
+                return full_content
+            
+            try:
+                response_data = response.json()
+            except Exception as e:
+                error_msg = f"API returned non-JSON response. Status: {response.status_code}, Response: {response.text}"
+                raise RuntimeError(error_msg)
             
             return response_data["choices"][0]["message"]["content"]
         except requests.exceptions.RequestException as e:
@@ -113,5 +138,5 @@ class GPTTranslation(BaseLLMTranslation):
                     error_details = e.response.json()
                     error_msg += f" - {json.dumps(error_details)}"
                 except:
-                    error_msg += f" - Status code: {e.response.status_code}"
+                    error_msg += f" - Status code: {e.response.status_code}, Response: {e.response.text}"
             raise RuntimeError(error_msg)

@@ -360,8 +360,30 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         self.api_key_input = self._add_line_edit(layout, self.tr("API Key (Optional)"), password=True)
         self.widgets["9Router_api_key"] = self.api_key_input
         
-        # If 9Router models can be fetched via standard OpenAI /v1/models,
-        # we can add a fetch button later if needed.
+        layout.addSpacing(15)
+        
+        fetch_layout = QtWidgets.QHBoxLayout()
+        self.fetch_btn = MPushButton(self.tr("Fetch Models")).primary().small()
+        self.fetch_btn.clicked.connect(self._fetch_models)
+        fetch_layout.addWidget(self.fetch_btn)
+        fetch_layout.addStretch(1)
+        layout.addLayout(fetch_layout)
+        
+        layout.addSpacing(5)
+        layout.addWidget(MLabel(self.tr("Model List")).secondary())
+        
+        # Model Search Bar
+        self.model_search_input = MLineEdit().search().small()
+        self.model_search_input.setPlaceholderText(self.tr("Search models..."))
+        self.model_search_input.setFixedWidth(400)
+        self.model_search_input.textChanged.connect(self._filter_models)
+        layout.addWidget(self.model_search_input)
+        
+        self.model_list = QtWidgets.QListWidget()
+        self.model_list.setFixedHeight(200)
+        self.model_list.setFixedWidth(400)
+        layout.addWidget(self.model_list)
+        self.widgets["9Router_model_list"] = self.model_list
 
     def _add_official_fields(self, layout):
         # Safety Warning
@@ -450,15 +472,19 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         self.enabled_checkbox.toggled.connect(lambda: self.sig_credentials_changed.emit())
 
     def _fetch_models(self):
+        base_url = None
         # For Official platform, we use global token exclusively
         if self.platform_internal_name == "Comic Translate (Official)":
             api_key = get_token("access_token")
         elif self.platform_internal_name == "Ollama":
             api_key = self.url_input.text() or "http://localhost:11434"
+        elif self.platform_internal_name == "9Router":
+            api_key = self.api_key_input.text()
+            base_url = self.url_input.text() or "http://localhost:20128/v1"
         else:
             api_key = self.api_key_input.text()
 
-        if not api_key and self.platform_internal_name not in ["OpenRouter", "Ollama"]:
+        if not api_key and self.platform_internal_name not in ["OpenRouter", "Ollama", "9Router"]:
             MMessage.error(self.tr("Please enter an API Key first"), parent=self, duration=2)
             return
 
@@ -469,10 +495,11 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         # Use a thread for fetching to avoid UI freeze
         class FetchThread(QtCore.QThread):
             finished = QtCore.Signal(list)
-            def __init__(self, platform, key):
+            def __init__(self, platform, key, base_url=None):
                 super().__init__()
                 self.platform = platform
                 self.key = key
+                self.base_url = base_url
             def run(self):
                 models = []
                 if self.platform == "Google Gemini":
@@ -487,11 +514,13 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
                     models = ModelManager.fetch_deepseek_models(self.key)
                 elif self.platform == "Ollama":
                     models = ModelManager.fetch_ollama_models(self.key)
+                elif self.platform == "9Router":
+                    models = ModelManager.fetch_9router_models(self.base_url, self.key)
                 elif self.platform == "Comic Translate (Official)":
                     models = ModelManager.fetch_official_models(self.key)
                 self.finished.emit(models)
 
-        self.thread = FetchThread(self.platform_internal_name, api_key)
+        self.thread = FetchThread(self.platform_internal_name, api_key, base_url)
         self.thread.finished.connect(self._on_models_fetched)
         self.thread.start()
 
@@ -677,7 +706,8 @@ class CredentialsPage(QtWidgets.QWidget):
                     is_configured = True
             elif internal_name == "9Router":
                 url = widget.widgets.get("9Router_api_url")
-                if url and url.text().strip():
+                model_list = widget.widgets.get("9Router_model_list")
+                if (url and url.text().strip()) or (model_list and model_list.currentItem()):
                     is_configured = True
             elif internal_name == "Comic Translate (Official)":
                 if get_token("access_token"):

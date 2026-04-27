@@ -163,6 +163,9 @@ class SettingsPage(QtWidgets.QWidget):
             elif internal_service == "9Router":
                 creds['api_url'] = _get_val("9Router_api_url")
                 creds['api_key'] = _get_val("9Router_api_key")
+                model = _get_val("9Router_model_list")
+                if model:
+                    creds['selected_model'] = model
             elif internal_service == "Googletrans":
                 pass
             else:
@@ -319,6 +322,8 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "9Router":
                     settings.setValue(f"{translated_service}_api_url", cred['api_url'])
                     settings.setValue(f"{translated_service}_api_key", cred['api_key'])
+                    if 'selected_model' in cred and cred['selected_model']:
+                        settings.setValue(f"{translated_service}_selected_model", cred['selected_model'])
                 elif translated_service == "Googletrans":
                     pass
                 else:
@@ -479,6 +484,12 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "9Router":
                     self.ui.credential_widgets[f"{translated_service}_api_url"].setText(settings.value(f"{translated_service}_api_url", 'http://localhost:20128/v1'))
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
+                    selected_model = settings.value(f"{translated_service}_selected_model", '')
+                    if selected_model:
+                        model_list_widget = self.ui.credential_widgets[f"{translated_service}_model_list"]
+                        model_list_widget.clear()
+                        model_list_widget.addItem(selected_model)
+                        model_list_widget.setCurrentRow(0)
                 elif translated_service == "Googletrans":
                     pass
                 else:

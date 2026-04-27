@@ -14,6 +14,7 @@ from .llm.deepseek import DeepseekTranslation
 from .llm.custom import CustomTranslation
 from .llm.openrouter import OpenRouterTranslation
 from .llm.ollama import OllamaTranslation
+from .llm.nine_router import NineRouterTranslation
 from .deelx import DeeLXTranslation
 from .official import OfficialTranslation
 
@@ -42,6 +43,7 @@ class TranslationFactory:
         "OpenRouter": OpenRouterTranslation,
         "Ollama": OllamaTranslation,
         "Custom": CustomTranslation,
+        "9Router": NineRouterTranslation,
         "Comic Translate (Official)": OfficialTranslation
     }
     

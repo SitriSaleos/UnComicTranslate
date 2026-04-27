@@ -431,10 +431,8 @@ class ComicTranslateUI(QtWidgets.QMainWindow):
 
         self.font_dropdown = MFontComboBox().small()
         self.font_dropdown.setToolTip(self.tr("Font"))
-        font_files = [os.path.join(font_folder_path, f) for f in os.listdir(font_folder_path) 
-                      if f.endswith((".ttf", ".ttc", ".otf", ".woff", ".woff2"))]
-        for font in font_files:
-            self.add_custom_font(font)
+        # Load fonts - will be populated after settings are loaded
+        self.load_selected_fonts()
 
         self.font_size_dropdown = MComboBox().small()
         self.font_size_dropdown.setToolTip(self.tr("Font Size"))
@@ -820,6 +818,58 @@ class ComicTranslateUI(QtWidgets.QMainWindow):
         # Check if font_input is a file path
         if os.path.splitext(font_input)[1].lower() in [".ttf", ".ttc", ".otf", ".woff", ".woff2"]:
             QFontDatabase.addApplicationFont(font_input)
+    
+    def load_selected_fonts(self):
+        """Load only selected fonts into the font dropdown"""
+        from PySide6.QtCore import QSettings
+        
+        # Get selected fonts from settings
+        settings = QSettings("UnComicLabs", "UnComicTranslate")
+        selected_fonts = settings.value('selected_fonts', None)
+        
+        # Block signals while we update
+        self.font_dropdown.blockSignals(True)
+        
+        # If selected_fonts is None (first time), show all fonts
+        # If selected_fonts is empty list [], show no fonts
+        if selected_fonts is None:
+            # First time - show all fonts
+            self.font_dropdown.clear()
+            # Load custom fonts
+            if os.path.exists(font_folder_path):
+                font_files = [os.path.join(font_folder_path, f) for f in os.listdir(font_folder_path) 
+                              if f.endswith((".ttf", ".ttc", ".otf", ".woff", ".woff2"))]
+                for font in font_files:
+                    self.add_custom_font(font)
+        elif len(selected_fonts) == 0:
+            # No fonts selected - clear dropdown
+            self.font_dropdown.clear()
+        else:
+            # Load ONLY selected fonts
+            font_db = QFontDatabase()
+            system_fonts = font_db.families()
+            
+            # Load selected custom fonts first
+            if os.path.exists(font_folder_path):
+                font_files = [os.path.join(font_folder_path, f) for f in os.listdir(font_folder_path) 
+                              if f.endswith((".ttf", ".ttc", ".otf", ".woff", ".woff2"))]
+                
+                for font_path in font_files:
+                    font_family = self.get_font_family(font_path)
+                    if font_family in selected_fonts:
+                        self.add_custom_font(font_path)
+            
+            # Remove fonts not in selected list
+            # Go backwards to avoid index issues
+            for i in range(self.font_dropdown.count() - 1, -1, -1):
+                font_name = self.font_dropdown.itemText(i)
+                if font_name not in selected_fonts:
+                    self.font_dropdown.removeItem(i)
+        
+        self.font_dropdown.blockSignals(False)
+        
+        # Force refresh the dropdown
+        self.font_dropdown.repaint()
 
     def get_color(self):
         default_color = QtGui.QColor('#000000')

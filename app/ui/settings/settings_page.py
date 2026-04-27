@@ -205,6 +205,7 @@ class SettingsPage(QtWidgets.QWidget):
             'export': self.get_export_settings(),
             'credentials': self.get_credentials(),
             'save_keys': self.ui.save_keys_checkbox.isChecked(),
+            'selected_fonts': self.ui.text_rendering_page.get_selected_fonts(),
         }
 
     def import_font(self, file_paths: list[str]):
@@ -230,9 +231,14 @@ class SettingsPage(QtWidgets.QWidget):
             for font in font_files:
                 font_family = self.add_font_family(font)
                 font_families.append(font_family)
+                # Add to font list in UI
+                self.ui.text_rendering_page.add_font_to_list(font, font_family, checked=True)
             
             if font_families:
                 self.font_imported.emit(font_families[0])
+            
+            # Save selected fonts to settings
+            self.save_selected_fonts()
 
     def select_color(self, outline = False):
         default_color = QtGui.QColor('#000000') if not outline else QtGui.QColor('#FFFFFF')
@@ -262,6 +268,9 @@ class SettingsPage(QtWidgets.QWidget):
                 for sub_key, sub_value in group_value.items():
                     process_group(sub_key, sub_value, settings_obj)
                 settings_obj.endGroup()
+            elif isinstance(group_value, list):
+                # Handle lists directly without mapping
+                settings_obj.setValue(group_key, group_value)
             else:
                 # Convert value to English using mappings if available
                 mapped_value = self.ui.value_mappings.get(group_value, group_value)
@@ -269,6 +278,9 @@ class SettingsPage(QtWidgets.QWidget):
 
         for key, value in all_settings.items():
             process_group(key, value, settings)
+
+        # Save selected fonts
+        self.save_selected_fonts()
 
         # Save credentials separately if save_keys is checked
         credentials = self.get_credentials()
@@ -469,6 +481,9 @@ class SettingsPage(QtWidgets.QWidget):
         self._load_user_info_from_settings()
         self._update_account_view()
         
+        # Load selected fonts
+        self.load_selected_fonts()
+        
         # Check session if logged in
         if self.is_logged_in():
             self.auth_client.check_session_async()
@@ -623,5 +638,54 @@ class SettingsPage(QtWidgets.QWidget):
             settings.setValue(CREDITS_KEY, self.user_credits)
         settings.endGroup()
 
+    def save_selected_fonts(self):
+        """Save selected fonts to settings"""
+        settings = QSettings("UnComicLabs", "UnComicTranslate")
+        selected_fonts = self.ui.text_rendering_page.get_selected_fonts()
+        settings.setValue('selected_fonts', selected_fonts)
+    
+    def load_selected_fonts(self):
+        """Load selected fonts from settings and populate the font list"""
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(current_file_dir, '..', '..', '..'))
+        font_folder_path = os.path.join(project_root, 'resources', 'fonts')
+        
+        # Clear existing font list
+        self.ui.text_rendering_page.clear_font_list()
+        
+        # Load selected fonts from settings
+        settings = QSettings("UnComicLabs", "UnComicTranslate")
+        selected_fonts = settings.value('selected_fonts', None)
+        
+        # If selected_fonts is None (first time), select all fonts by default
+        first_time = selected_fonts is None
+        if not isinstance(selected_fonts, list):
+            selected_fonts = []
+        
+        # Add system fonts first
+        font_db = QFontDatabase()
+        system_fonts = font_db.families()
+        for font_family in sorted(system_fonts):
+            # Check if this font was previously selected, or select all if first time
+            is_selected = (font_family in selected_fonts) if not first_time else True
+            self.ui.text_rendering_page.add_font_to_list('', font_family, checked=is_selected)
+        
+        # Get all custom font files
+        if os.path.exists(font_folder_path):
+            font_files = [os.path.join(font_folder_path, f) for f in os.listdir(font_folder_path) 
+                          if f.endswith((".ttf", ".ttc", ".otf", ".woff", ".woff2"))]
+            
+            # Add custom fonts to the list
+            for font_path in font_files:
+                font_family = self.add_font_family(font_path)
+                # Check if this font was previously selected, or select all if first time
+                is_selected = (font_family in selected_fonts) if not first_time else True
+                # Only add if not already in system fonts
+                if font_family not in system_fonts:
+                    self.ui.text_rendering_page.add_font_to_list(font_path, font_family, checked=is_selected)
+        
+        # If first time, save the default selection (all fonts)
+        if first_time:
+            self.save_selected_fonts()
 
 

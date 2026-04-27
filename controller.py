@@ -100,6 +100,9 @@ class ComicTranslate(ComicTranslateUI):
 
         self.project_ctrl.load_main_page_settings()
         self.settings_page.load_settings()
+        
+        # Load selected fonts after settings are loaded
+        self.load_selected_fonts()
 
         self.operation_queue = deque()
         self.is_processing_queue = False

@@ -15,6 +15,7 @@ import requests
 PROVIDER_ICONS = {
     "Google Gemini": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/gemini-color.svg",
     "OpenRouter": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/openrouter.svg",
+    "9Router": "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/hub/materialsymbolsoutlined/hub_24px.svg",
     "Ollama": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/ollama.svg",
     "Googletrans": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/google-color.svg",
     "DeeLX": "https://avatars.githubusercontent.com/u/82772671?s=200&v=4",
@@ -63,7 +64,14 @@ class ProviderCard(QtWidgets.QFrame):
         self.icon_label = QtWidgets.QLabel()
         self.icon_label.setFixedSize(32, 32)
         self.icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.icon_label.setStyleSheet("background-color: transparent;")
+        
+        if service_label == "9Router" or service_label == self.tr("9Router"):
+            self.icon_label.setStyleSheet("""
+                background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 #f97815, stop:1 #c2590a);
+                border-radius: 8px;
+            """)
+        else:
+            self.icon_label.setStyleSheet("background-color: transparent;")
         
         # Determine internal name to get correct icon mapping
         internal_name = service_label
@@ -120,6 +128,10 @@ class ProviderCard(QtWidgets.QFrame):
 
             if is_svg:
                 from PySide6.QtSvg import QSvgRenderer
+                if data and (self.service_label == "9Router" or self.service_label == self.tr("9Router")):
+                    # Fill the SVG with white for the orange background
+                    data = data.replace(b'<svg', b'<svg fill="white"')
+
                 if filepath:
                     renderer = QSvgRenderer(filepath)
                 else:
@@ -221,6 +233,8 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
             self._add_deelx_fields(layout)
         elif self.platform_internal_name == "Ollama":
             self._add_ollama_fields(layout)
+        elif self.platform_internal_name == "9Router":
+            self._add_9router_fields(layout)
         elif self.platform_internal_name == "Comic Translate (Official)":
             self._add_official_fields(layout)
         else:
@@ -337,6 +351,17 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         self.model_list.setFixedWidth(400)
         layout.addWidget(self.model_list)
         self.widgets["Ollama_model_list"] = self.model_list
+
+    def _add_9router_fields(self, layout):
+        self.url_input = self._add_line_edit(layout, self.tr("Base URL"))
+        self.url_input.setText("http://localhost:20128/v1") # Default value
+        self.widgets["9Router_api_url"] = self.url_input
+        
+        self.api_key_input = self._add_line_edit(layout, self.tr("API Key (Optional)"), password=True)
+        self.widgets["9Router_api_key"] = self.api_key_input
+        
+        # If 9Router models can be fetched via standard OpenAI /v1/models,
+        # we can add a fetch button later if needed.
 
     def _add_official_fields(self, layout):
         # Safety Warning
@@ -649,6 +674,10 @@ class CredentialsPage(QtWidgets.QWidget):
                 model_list = widget.widgets.get("Ollama_model_list")
                 # Ollama is considered configured if either URL is set or a model is selected
                 if (url and url.text().strip()) or (model_list and model_list.currentItem()):
+                    is_configured = True
+            elif internal_name == "9Router":
+                url = widget.widgets.get("9Router_api_url")
+                if url and url.text().strip():
                     is_configured = True
             elif internal_name == "Comic Translate (Official)":
                 if get_token("access_token"):

@@ -160,6 +160,9 @@ class SettingsPage(QtWidgets.QWidget):
                     'self_hosted': _get_val("DeeLX_self_hosted"),
                     'url': _get_val("DeeLX_url"),
                 })
+            elif internal_service == "9Router":
+                creds['api_url'] = _get_val("9Router_api_url")
+                creds['api_key'] = _get_val("9Router_api_key")
             elif internal_service == "Googletrans":
                 pass
             else:
@@ -313,6 +316,9 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "DeeLX":
                     settings.setValue(f"{translated_service}_self_hosted", cred['self_hosted'])
                     settings.setValue(f"{translated_service}_url", cred['url'])
+                elif translated_service == "9Router":
+                    settings.setValue(f"{translated_service}_api_url", cred['api_url'])
+                    settings.setValue(f"{translated_service}_api_key", cred['api_key'])
                 elif translated_service == "Googletrans":
                     pass
                 else:
@@ -470,6 +476,9 @@ class SettingsPage(QtWidgets.QWidget):
                 elif translated_service == "DeeLX":
                     self.ui.credential_widgets[f"{translated_service}_self_hosted"].setChecked(settings.value(f"{translated_service}_self_hosted", False, type=bool))
                     self.ui.credential_widgets[f"{translated_service}_url"].setText(settings.value(f"{translated_service}_url", ''))
+                elif translated_service == "9Router":
+                    self.ui.credential_widgets[f"{translated_service}_api_url"].setText(settings.value(f"{translated_service}_api_url", 'http://localhost:20128/v1'))
+                    self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
                 elif translated_service == "Googletrans":
                     pass
                 else:

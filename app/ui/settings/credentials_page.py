@@ -9,6 +9,184 @@ from ..dayu_widgets.loading import MLoadingWrapper
 from .utils import set_label_width
 from modules.translation.models import ModelManager
 from app.account.auth.token_storage import get_token
+import os
+import requests
+
+PROVIDER_ICONS = {
+    "Google Gemini": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/gemini-color.svg",
+    "OpenRouter": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/openrouter.svg",
+    "Ollama": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/ollama.svg",
+    "Googletrans": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/google-color.svg",
+    "DeeLX": "https://avatars.githubusercontent.com/u/82772671?s=200&v=4",
+    "Custom": "local",
+    "Deepseek": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/deepseek-color.svg",
+    "Open AI GPT": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/openai.svg",
+    "Microsoft Azure": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/azure-color.svg",
+    "Google Cloud": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/googlecloud-color.svg",
+    "DeepL": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/deepl-color.svg",
+    "Anthropic Claude": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/claude-color.svg",
+    "Yandex": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/yandex.svg",
+    "Comic Translate (Official)": "https://raw.githubusercontent.com/ogkalu2/comic-translate/refs/heads/main/resources/icons/icon.ico"
+}
+
+class IconFetchThread(QtCore.QThread):
+    finished = QtCore.Signal(bytes)
+    
+    def __init__(self, url, parent=None):
+        super().__init__(parent)
+        self.url = url
+        
+    def run(self):
+        try:
+            response = requests.get(self.url, timeout=5)
+            if response.status_code == 200:
+                self.finished.emit(response.content)
+        except Exception:
+            pass
+
+
+class ProviderCard(QtWidgets.QFrame):
+    clicked = QtCore.Signal()
+
+    def __init__(self, service_label, parent=None):
+        super().__init__(parent)
+        self.service_label = service_label
+        self.setFixedSize(180, 65)
+        self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.setObjectName("ProviderCard")
+        
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(10, 5, 10, 5)
+        layout.setSpacing(10)
+        
+        # Icon
+        self.icon_label = QtWidgets.QLabel()
+        self.icon_label.setFixedSize(32, 32)
+        self.icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.icon_label.setStyleSheet("background-color: transparent;")
+        
+        # Determine internal name to get correct icon mapping
+        internal_name = service_label
+        # (A bit of a hack to map names back if needed, but the labels generally match the dict)
+        
+        icon_url = PROVIDER_ICONS.get(service_label)
+        
+        if icon_url == "local":
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
+            icon_path = os.path.join(project_root, 'resources', 'static', 'settings.svg')
+            if os.path.exists(icon_path):
+                self._set_icon_pixmap(filepath=icon_path)
+        elif icon_url:
+            self.fetch_thread = IconFetchThread(icon_url, self)
+            self.fetch_thread.finished.connect(self._on_icon_fetched)
+            self.fetch_thread.start()
+        else:
+            # Fallback to first letter
+            self.icon_label.setText(service_label[0] if service_label else "?")
+            self.icon_label.setStyleSheet("background-color: #8b5cf6; color: white; border-radius: 8px; font-weight: bold; font-size: 16px;")
+            
+        layout.addWidget(self.icon_label)
+        
+        text_layout = QtWidgets.QVBoxLayout()
+        text_layout.setSpacing(2)
+        text_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
+        
+        self.name_label = QtWidgets.QLabel(service_label)
+        self.name_label.setStyleSheet("font-weight: bold; font-size: 13px; color: palette(text);")
+        
+        self.status_label = QtWidgets.QLabel(self.tr("● (Activated)"))
+        self.status_label.setStyleSheet("color: #4caf50; font-size: 11px; font-weight: bold; background-color: rgba(76, 175, 80, 0.1); border-radius: 4px; padding: 2px 4px;")
+        self.status_label.hide()
+        
+        text_layout.addWidget(self.name_label)
+        text_layout.addWidget(self.status_label)
+        
+        layout.addLayout(text_layout)
+        layout.addStretch()
+        
+        self.update_style(False)
+        
+    def _set_icon_pixmap(self, data=None, filepath=None):
+        try:
+            is_svg = False
+            if filepath and filepath.endswith('.svg'):
+                is_svg = True
+            elif data and (b'<svg' in data.lower() or b'<SVG' in data):
+                is_svg = True
+
+            dpr = self.devicePixelRatioF()
+            target_size = int(32 * dpr)
+
+            if is_svg:
+                from PySide6.QtSvg import QSvgRenderer
+                if filepath:
+                    renderer = QSvgRenderer(filepath)
+                else:
+                    renderer = QSvgRenderer(data)
+                    
+                pixmap = QtGui.QPixmap(target_size, target_size)
+                pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+                pixmap.setDevicePixelRatio(dpr)
+                
+                painter = QtGui.QPainter(pixmap)
+                painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+                painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
+                # Ensure the SVG is rendered to the correct logical dimensions
+                renderer.render(painter, QtCore.QRectF(0, 0, 32, 32))
+                painter.end()
+                
+                self.icon_label.setPixmap(pixmap)
+                return
+        except Exception:
+            pass
+
+        # Fallback for non-SVG or if SVG rendering fails
+        pixmap = QtGui.QPixmap()
+        if filepath:
+            pixmap.load(filepath)
+        elif data:
+            pixmap.loadFromData(data)
+            
+        if not pixmap.isNull():
+            scaled_pixmap = pixmap.scaled(int(32 * self.devicePixelRatioF()), int(32 * self.devicePixelRatioF()), QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation)
+            scaled_pixmap.setDevicePixelRatio(self.devicePixelRatioF())
+            self.icon_label.setPixmap(scaled_pixmap)
+
+    def _on_icon_fetched(self, data):
+        self._set_icon_pixmap(data=data)
+        
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+            
+    def set_configured(self, is_configured):
+        self.status_label.setVisible(is_configured)
+        self.update_style(is_configured)
+        
+    def update_style(self, is_configured):
+        if is_configured:
+            self.setStyleSheet("""
+                QFrame#ProviderCard {
+                    border: 1px solid rgba(76, 175, 80, 0.5);
+                    border-radius: 8px;
+                    background-color: rgba(76, 175, 80, 0.05);
+                }
+                QFrame#ProviderCard:hover {
+                    background-color: rgba(76, 175, 80, 0.1);
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QFrame#ProviderCard {
+                    border: 1px solid rgba(128, 128, 128, 0.3);
+                    border-radius: 8px;
+                    background-color: transparent;
+                }
+                QFrame#ProviderCard:hover {
+                    background-color: rgba(128, 128, 128, 0.1);
+                }
+            """)
 
 class PlatformCredentialWidget(QtWidgets.QWidget):
     sig_credentials_changed = QtCore.Signal()
@@ -361,8 +539,8 @@ class CredentialsPage(QtWidgets.QWidget):
             internal_name = self.value_mappings.get(service_label, service_label)
             
             # Create Card/Button for Grid
-            btn = MPushButton(text=service_label)
-            btn.setFixedSize(160, 60) # Large button acting like a card
+            btn = ProviderCard(service_label=service_label)
+
             
             if internal_name == "Googletrans":
                 btn.clicked.connect(self._show_googletrans_warning)
@@ -480,10 +658,12 @@ class CredentialsPage(QtWidgets.QWidget):
                 if key_input and hasattr(key_input, 'text') and key_input.text().strip():
                     is_configured = True
             
-            prefix = "🟢 " if is_configured else ""
-            # Remove existing prefix if any
-            clean_label = label.replace("🟢 ", "")
-            btn.setText(f"{prefix}{clean_label}")
+            if hasattr(btn, 'set_configured'):
+                btn.set_configured(is_configured)
+            else:
+                prefix = "🟢 " if is_configured else ""
+                clean_label = label.replace("🟢 ", "")
+                btn.setText(f"{prefix}{clean_label}")
 
     def _show_googletrans_warning(self):
         MMessage.warning(

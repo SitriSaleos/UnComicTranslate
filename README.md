@@ -135,5 +135,8 @@ Export translated projects in web-ready format:
 - [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
 - [RapidOCR](https://github.com/RapidAI/RapidOCR)
 - [dayu_widgets](https://github.com/phenom-films/dayu_widgets)
+- [Comic-Translate (Original Project)](https://github.com/ogkalu2/comic-translate/)
+- [LobeHub (Icon Provider)](https://lobehub.com/)
+- [py-googletrans (ssut & community)](https://github.com/ssut/py-googletrans)
 
 

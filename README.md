@@ -80,30 +80,16 @@ uv run main.py
 
 ## API Keys
 
-The following features require API keys:
+Configure providers in **Settings -> Credentials -> Select Supplier**.
 
-- **Translation:** GPT-4o or 4o-mini (~$0.01 USD/page for GPT-4o)
-- **OCR:** GPT-4o (~$0.02 USD/page), Microsoft Azure Vision (5000 images/month free), or Google Cloud Vision (1000 images/month free)
-- **DeepL Translator:** Free tier (500,000 characters/month)
+UnComicTranslate supports over **15+ Providers** (including Online APIs and Local models):
 
-Configure API keys in Settings > Credentials
+- **OCR:** Runs **locally and is completely free** by default using Manga-OCR, Pororo, or PPOCR. Optional cloud providers (Google/Azure) are available if needed.
+- **Translation (LLM):** 
+  - **Gemini Flash (2.0/2.5/3):** Highly recommended as Google provides approximately **1,500 free requests per day (RPD)** for these models.
+  - **Other providers:** Supports OpenAI (GPT-4o), Anthropic (Claude), Deepseek, Groq, HuggingFace, Ollama (Local), 9Router, and more.
 
 ![Credentials Settings](resources/img/Screenshot_Credentials.png)
-
-### Getting API Keys
-
-**OpenAI (GPT)**
-1. Go to [platform.openai.com](https://platform.openai.com/)
-2. Sign in or create an account
-3. Navigate to API Keys section
-4. Click "Create New Secret Key" and copy it
-
-**Google Cloud Vision**
-1. Create a [Google Cloud](https://cloud.google.com/) account
-2. Go to [Cloud Resource Manager](https://console.cloud.google.com/cloud-resource-manager) and create a project
-3. Enable billing and set up a free trial account
-4. [Enable Google Cloud Vision API](https://console.cloud.google.com/apis/library/vision.googleapis.com)
-5. Go to [Credentials](https://console.cloud.google.com/apis/credentials), create an API Key, and copy it
 
 ## How It Works
 

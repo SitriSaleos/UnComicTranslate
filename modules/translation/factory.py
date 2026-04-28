@@ -16,6 +16,7 @@ from .llm.openrouter import OpenRouterTranslation
 from .llm.ollama import OllamaTranslation
 from .llm.nine_router import NineRouterTranslation
 from .llm.groq import GroqTranslation
+from .llm.huggingface import HuggingFaceTranslation
 from .deelx import DeeLXTranslation
 from .official import OfficialTranslation
 
@@ -46,6 +47,7 @@ class TranslationFactory:
         "Custom": CustomTranslation,
         "9Router": NineRouterTranslation,
         "Groq": GroqTranslation,
+        "HuggingFace": HuggingFaceTranslation,
         "Comic Translate (Official)": OfficialTranslation
     }
     

@@ -147,3 +147,26 @@ class ModelManager:
         except Exception as e:
             print(f"Error fetching Groq models: {e}")
             return ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
+
+    @staticmethod
+    def fetch_huggingface_models(api_key: str) -> List[str]:
+        try:
+            url = "https://router.huggingface.co/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            # Hugging Face returns a list of model objects with an 'id' field
+            models = [m['id'] for m in data.get('data', [])]
+            return sorted(models)
+        except Exception as e:
+            print(f"Error fetching Hugging Face models: {e}")
+            # Fallback list of popular and stable models
+            return [
+                "meta-llama/Llama-3.3-70B-Instruct",
+                "meta-llama/Meta-Llama-3-8B-Instruct",
+                "mistralai/Mistral-7B-Instruct-v0.3",
+                "mistralai/Mixtral-8x7B-Instruct-v0.1",
+                "microsoft/Phi-3-mini-4k-instruct",
+                "Qwen/Qwen2.5-72B-Instruct"
+            ]

@@ -22,6 +22,7 @@ PROVIDER_ICONS = {
     "Custom": "local",
     "Deepseek": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/deepseek-color.svg",
     "Groq": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/groq.svg",
+    "HuggingFace": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/huggingface-color.svg",
     "Open AI GPT": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/openai.svg",
     "Microsoft Azure": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/azure-color.svg",
     "Google Cloud": "https://unpkg.com/@lobehub/icons-static-svg@1.88.0/icons/googlecloud-color.svg",
@@ -267,7 +268,7 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
         self.widgets[f"{self.platform_internal_name}_api_key"] = self.api_key_input
         
         # If it's a platform that supports model fetching
-        if self.platform_internal_name in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek", "Groq"]:
+        if self.platform_internal_name in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek", "Groq", "HuggingFace"]:
             layout.addSpacing(15)
             
             fetch_layout = QtWidgets.QHBoxLayout()
@@ -515,6 +516,8 @@ class PlatformCredentialWidget(QtWidgets.QWidget):
                     models = ModelManager.fetch_deepseek_models(self.key)
                 elif self.platform == "Groq":
                     models = ModelManager.fetch_groq_models(self.key)
+                elif self.platform == "HuggingFace":
+                    models = ModelManager.fetch_huggingface_models(self.key)
                 elif self.platform == "Ollama":
                     models = ModelManager.fetch_ollama_models(self.key)
                 elif self.platform == "9Router":

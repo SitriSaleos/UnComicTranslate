@@ -61,7 +61,7 @@ class SettingsPageUI(QtWidgets.QWidget):
         self.themes = [self.tr('Dark'), self.tr('Light')]
         self.alignment = [self.tr("Left"), self.tr("Center"), self.tr("Right")]
 
-        self.credential_services = [self.tr("Google Gemini"), self.tr("OpenRouter"), self.tr("Ollama"), self.tr("Googletrans"), self.tr("9Router"), self.tr("DeeLX"), self.tr("Custom"), self.tr("Deepseek"), self.tr("Groq"), self.tr("Open AI GPT"), self.tr("Microsoft Azure"), self.tr("Google Cloud"), 
+        self.credential_services = [self.tr("Google Gemini"), self.tr("OpenRouter"), self.tr("Ollama"), self.tr("Googletrans"), self.tr("9Router"), self.tr("DeeLX"), self.tr("Custom"), self.tr("Deepseek"), self.tr("Groq"), self.tr("HuggingFace"), self.tr("Open AI GPT"), self.tr("Microsoft Azure"), self.tr("Google Cloud"), 
                                     self.tr("DeepL"), self.tr("Anthropic Claude"), self.tr("Yandex"), self.tr("Comic Translate (Official)")]
         
         self.supported_translators = [
@@ -72,6 +72,7 @@ class SettingsPageUI(QtWidgets.QWidget):
             self.tr("Anthropic Claude"), 
             self.tr("Deepseek"), 
             self.tr("Groq"),
+            self.tr("HuggingFace"),
             self.tr("Googletrans"),
             self.tr("9Router"),
             self.tr("Yandex"), 
@@ -116,6 +117,7 @@ class SettingsPageUI(QtWidgets.QWidget):
             self.tr("Anthropic Claude"): "Anthropic Claude",
             self.tr("Deepseek"): "Deepseek",
             self.tr("Groq"): "Groq",
+            self.tr("HuggingFace"): "HuggingFace",
             self.tr("Yandex"): "Yandex",
             self.tr("Google Translate"): "Google Translate",
             self.tr("Microsoft Translator"): "Microsoft Translator",

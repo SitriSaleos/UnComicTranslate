@@ -312,7 +312,7 @@ class SettingsPage(QtWidgets.QWidget):
                     settings.setValue(f"{translated_service}_api_url", cred['api_url'])
                     if 'selected_model' in cred and cred['selected_model']:
                         settings.setValue(f"{translated_service}_selected_model", cred['selected_model'])
-                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek", "Groq"]:
+                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek", "Groq", "HuggingFace"]:
                     settings.setValue(f"{translated_service}_api_key", cred['api_key'])
                     if 'selected_model' in cred and cred['selected_model']:
                         settings.setValue(f"{translated_service}_selected_model", cred['selected_model'])
@@ -463,7 +463,7 @@ class SettingsPage(QtWidgets.QWidget):
                         model_list_widget.clear()
                         model_list_widget.addItem(selected_model)
                         model_list_widget.setCurrentRow(0)
-                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek", "Groq"]:
+                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek", "Groq", "HuggingFace"]:
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
                     selected_model = settings.value(f"{translated_service}_selected_model", '')
                     if selected_model:

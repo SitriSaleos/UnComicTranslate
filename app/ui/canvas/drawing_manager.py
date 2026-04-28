@@ -318,9 +318,11 @@ class DrawingManager:
                 # Draw the path - the painter already has the transformation applied
                 # We need to draw at the item position + path coordinates
                 painter.save()
-                painter.translate(item_pos)
-                painter.drawPath(item.path())
-                painter.restore()
+                try:
+                    painter.translate(item_pos)
+                    painter.drawPath(item.path())
+                finally:
+                    painter.restore()
         
         human_painter.end()
         gen_painter.end()

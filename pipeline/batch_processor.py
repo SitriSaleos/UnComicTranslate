@@ -8,7 +8,16 @@ import imkit as imk
 import time
 from datetime import datetime
 from typing import List
+import numpy as np
 from PySide6.QtGui import QColor
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if hasattr(obj, 'item'):
+            return obj.item()
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 from modules.detection.processor import TextBlockDetector
 from modules.translation.processor import Translator
@@ -309,8 +318,8 @@ class BatchProcessor:
                 if not os.path.exists(path):
                     os.makedirs(path, exist_ok=True)
                 
-                # Get image dimensions
-                h, w = image.shape[:2]
+                # Get image dimensions (convert to native Python types for JSON serialization)
+                h, w = map(lambda x: x.item() if hasattr(x, 'item') else int(x), image.shape[:2])
                 
                 web_data = {
                     'image_path': os.path.basename(image_path),
@@ -415,7 +424,7 @@ class BatchProcessor:
                 web_data['blocks'] = text_items_state
                 json_path = os.path.join(directory, f"comic_translate_{timestamp}", "web_json", archive_bname, f"{base_name}.json")
                 with open(json_path, 'w', encoding='UTF-8') as f:
-                    json.dump(web_data, f, ensure_ascii=False, indent=2)
+                    json.dump(web_data, f, ensure_ascii=False, indent=2, cls=NumpyEncoder)
             
             self.emit_progress(index, total_images, 9, 10, False)
             if self.main_page.current_worker and self.main_page.current_worker.is_cancelled:

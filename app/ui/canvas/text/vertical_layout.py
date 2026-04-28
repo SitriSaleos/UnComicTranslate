@@ -679,52 +679,54 @@ class VerticalTextDocumentLayout(QAbstractTextDocumentLayout):
 
     def draw(self, painter: QPainter, context: QAbstractTextDocumentLayout.PaintContext) -> None:
         painter.save()
-        context_sel = context.selections
-        has_selection = len(context_sel) > 0
-        selection = context_sel[0] if has_selection else None
-        cursor_block = self.document().findBlock(context.cursorPosition)
+        try:
+            context_sel = context.selections
+            has_selection = len(context_sel) > 0
+            selection = context_sel[0] if has_selection else None
+            cursor_block = self.document().findBlock(context.cursorPosition)
 
-        # Delegate drawing to the hierarchical layout nodes
-        for block_node in self._layout_state.nodes:
-            block_node.draw(painter, selection)
+            # Delegate drawing to the hierarchical layout nodes
+            for block_node in self._layout_state.nodes:
+                block_node.draw(painter, selection)
 
-        # Draw the cursor, which is a layout-level concern
-        if cursor_block.isValid() and cursor_block.isVisible():
-            blk_no = cursor_block.blockNumber()
-            if blk_no < len(self._layout_state.nodes):
-                block_node = self._layout_state.nodes[blk_no]
-                layout = cursor_block.layout()
-                cpos_in_block = context.cursorPosition - cursor_block.position()
-                line = layout.lineForTextPosition(cpos_in_block)
-                if line.isValid():
-                    pos = line.position()
-                    x, y = pos.x(), pos.y()
+            # Draw the cursor, which is a layout-level concern
+            if cursor_block.isValid() and cursor_block.isVisible():
+                blk_no = cursor_block.blockNumber()
+                if blk_no < len(self._layout_state.nodes):
+                    block_node = self._layout_state.nodes[blk_no]
+                    layout = cursor_block.layout()
+                    cpos_in_block = context.cursorPosition - cursor_block.position()
+                    line = layout.lineForTextPosition(cpos_in_block)
+                    if line.isValid():
+                        pos = line.position()
+                        x, y = pos.x(), pos.y()
 
-                    line_width = 0
-                    line_idx = line.lineNumber()
-                    if line_idx < len(block_node.lines):
-                        line_info = block_node.lines[line_idx]
-                        char_info = block_node.chars.get(line_info.effective_char_idx)
-                        if char_info: line_width = char_info.line_width
+                        line_width = 0
+                        line_idx = line.lineNumber()
+                        if line_idx < len(block_node.lines):
+                            line_info = block_node.lines[line_idx]
+                            char_info = block_node.chars.get(line_info.effective_char_idx)
+                            if char_info: line_width = char_info.line_width
 
-                        y_idx = cpos_in_block - line_info.start_char_index_in_block
-                        if 0 <= y_idx < len(line_info.char_y_offsets):
-                            y = line_info.char_y_offsets[y_idx]
+                            y_idx = cpos_in_block - line_info.start_char_index_in_block
+                            if 0 <= y_idx < len(line_info.char_y_offsets):
+                                y = line_info.char_y_offsets[y_idx]
 
-                    if line_width == 0:
-                        line_width = CharacterStyle(cursor_block.charFormat()).tight_char_bounds.width()
+                        if line_width == 0:
+                            line_width = CharacterStyle(cursor_block.charFormat()).tight_char_bounds.width()
 
-                    painter.setCompositionMode(QPainter.CompositionMode.RasterOp_NotDestination)
-                    painter.fillRect(QRectF(x, y, line_width, 2), painter.pen().brush())
+                        painter.setCompositionMode(QPainter.CompositionMode.RasterOp_NotDestination)
+                        painter.fillRect(QRectF(x, y, line_width, 2), painter.pen().brush())
 
-        if context.cursorPosition != -1 or has_selection:
-            self.update.emit()
-        if self.has_selection != has_selection:
-            self.update.emit()
-        else:
-            self.update.emit()
-        self.has_selection = has_selection
-        painter.restore()
+            if context.cursorPosition != -1 or has_selection:
+                self.update.emit()
+            if self.has_selection != has_selection:
+                self.update.emit()
+            else:
+                self.update.emit()
+            self.has_selection = has_selection
+        finally:
+            painter.restore()
 
     def move_cursor_between_columns(self, cursor_pos: int, column_delta: int) -> Optional[int]:
         """

@@ -1,5 +1,5 @@
 [project]
-name = "UnComicTranslate"
+name = "comic-translate-main"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -8,11 +8,13 @@ dependencies = [
     "azure-ai-vision-imageanalysis>=1.0.0b1",
     "deep-translator>=1.11.4",
     "deepl>=1.16.1",
+    "googletrans-py>=4.0.0rc1",
     "huggingface-hub>=0.34.4",
     "img2pdf>=0.5.1",
     "jaconv>=0.3.4",
     "janome>=0.5.0",
     "jieba>=0.42.1",
+    "keyring>=24.3.0",
     "mahotas>=1.4.18",
     "msgpack>=1.1.0",
     "numpy>=2.2.6",
@@ -29,7 +31,4 @@ dependencies = [
     "shapely>=2.1.1",
     "six>=1.16.0",
     "wget>=3.2",
-    "keyring>=24.3.0",
-    "opencv-python>=4.10.0.84",
-    "googletrans==4.0.0-rc1",
 ]

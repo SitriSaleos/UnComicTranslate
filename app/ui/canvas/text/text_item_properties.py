@@ -69,8 +69,11 @@ class TextItemProperties:
                 props.alignment = data['alignment']
                 
         # Direction
-        if 'direction' in data:
-            props.direction = data['direction']
+        if 'direction' in data and data['direction'] is not None:
+            if isinstance(data['direction'], int):
+                props.direction = Qt.LayoutDirection(data['direction'])
+            else:
+                props.direction = data['direction']
             
         # Position and transformation
         props.position = data.get('position', (0, 0))
@@ -130,8 +133,12 @@ class TextItemProperties:
                 return val.name()
             if hasattr(val, 'value'):  # Enums
                 return val.value
+            if hasattr(val, 'item'):  # NumPy types (int32, float32, etc)
+                return val.item()
             if isinstance(val, list):
                 return [serialize_val(v) for v in val]
+            if isinstance(val, tuple):
+                return tuple(serialize_val(v) for v in val)
             if hasattr(val, '__dataclass_fields__'):  # Dataclasses like OutlineInfo
                 from dataclasses import asdict
                 d = asdict(val)
@@ -142,21 +149,21 @@ class TextItemProperties:
         return {
             'text': self.text,
             'font_family': self.font_family,
-            'font_size': self.font_size,
+            'font_size': serialize_val(self.font_size),
             'text_color': serialize_val(self.text_color),
             'alignment': serialize_val(self.alignment),
-            'line_spacing': self.line_spacing,
+            'line_spacing': serialize_val(self.line_spacing),
             'outline_color': serialize_val(self.outline_color),
-            'outline_width': self.outline_width,
+            'outline_width': serialize_val(self.outline_width),
             'bold': self.bold,
             'italic': self.italic,
             'underline': self.underline,
             'direction': serialize_val(self.direction),
-            'position': self.position,
-            'rotation': self.rotation,
-            'scale': self.scale,
-            'transform_origin': self.transform_origin,
-            'width': self.width,
+            'position': serialize_val(self.position),
+            'rotation': serialize_val(self.rotation),
+            'scale': serialize_val(self.scale),
+            'transform_origin': serialize_val(self.transform_origin),
+            'width': serialize_val(self.width),
             'vertical': self.vertical,
             'selection_outlines': [serialize_val(o) for o in self.selection_outlines],
         }

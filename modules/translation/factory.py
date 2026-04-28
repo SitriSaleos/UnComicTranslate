@@ -15,6 +15,7 @@ from .llm.custom import CustomTranslation
 from .llm.openrouter import OpenRouterTranslation
 from .llm.ollama import OllamaTranslation
 from .llm.nine_router import NineRouterTranslation
+from .llm.groq import GroqTranslation
 from .deelx import DeeLXTranslation
 from .official import OfficialTranslation
 
@@ -44,6 +45,7 @@ class TranslationFactory:
         "Ollama": OllamaTranslation,
         "Custom": CustomTranslation,
         "9Router": NineRouterTranslation,
+        "Groq": GroqTranslation,
         "Comic Translate (Official)": OfficialTranslation
     }
     

@@ -132,3 +132,18 @@ class ModelManager:
         except Exception as e:
             print(f"Error fetching Ollama models: {e}")
             return []
+    @staticmethod
+    def fetch_groq_models(api_key: str) -> List[str]:
+        if not api_key:
+            return []
+        try:
+            url = "https://api.groq.com/openai/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            models = [m['id'] for m in data.get('data', [])]
+            return sorted(models)
+        except Exception as e:
+            print(f"Error fetching Groq models: {e}")
+            return ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]

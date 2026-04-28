@@ -312,7 +312,7 @@ class SettingsPage(QtWidgets.QWidget):
                     settings.setValue(f"{translated_service}_api_url", cred['api_url'])
                     if 'selected_model' in cred and cred['selected_model']:
                         settings.setValue(f"{translated_service}_selected_model", cred['selected_model'])
-                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek"]:
+                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek", "Groq"]:
                     settings.setValue(f"{translated_service}_api_key", cred['api_key'])
                     if 'selected_model' in cred and cred['selected_model']:
                         settings.setValue(f"{translated_service}_selected_model", cred['selected_model'])
@@ -360,6 +360,7 @@ class SettingsPage(QtWidgets.QWidget):
             "Deepseek-v3": "Deepseek",
             "Claude-4.5-Sonnet": "Anthropic Claude",
             "Claude-4.5-Haiku": "Anthropic Claude",
+            "Llama-3-70b": "Groq",
         }
         if translator in MODEL_TO_PLATFORM:
             translator = MODEL_TO_PLATFORM[translator]
@@ -462,7 +463,7 @@ class SettingsPage(QtWidgets.QWidget):
                         model_list_widget.clear()
                         model_list_widget.addItem(selected_model)
                         model_list_widget.setCurrentRow(0)
-                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek"]:
+                elif translated_service in ["Google Gemini", "Open AI GPT", "OpenRouter", "Anthropic Claude", "Deepseek", "Groq"]:
                     self.ui.credential_widgets[f"{translated_service}_api_key"].setText(settings.value(f"{translated_service}_api_key", ''))
                     selected_model = settings.value(f"{translated_service}_selected_model", '')
                     if selected_model:

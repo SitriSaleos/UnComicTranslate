@@ -15,6 +15,7 @@ from .dayu_widgets.browser import MDragFileButton, MClickBrowserFileToolButton, 
 from .dayu_widgets.push_button import MPushButton
 from .dayu_widgets.tool_button import MToolButton
 from .dayu_widgets.radio_button import MRadioButton
+from .dayu_widgets.switch import MSwitch
 from .dayu_widgets.button_group import MPushButtonGroup, MToolButtonGroup
 from .dayu_widgets.slider import MSlider
 from .dayu_widgets.qt import MPixmap, MIcon
@@ -330,13 +331,13 @@ class ComicTranslateUI(QtWidgets.QMainWindow):
         self.loading = MLoading().small()
         self.loading.setVisible(False)
 
-        self.manual_radio = MRadioButton(self.tr("Manual"))
-        self.manual_radio.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.mode_switch = MSwitch()
+        self.mode_switch.setToolTip(self.tr("Toggle between Automatic and Manual Mode"))
+        self.mode_switch.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+
+        self.mode_label = QtWidgets.QLabel(self.tr("Automatic"))
+        self.mode_label.setContentsMargins(10, 0, 0, 0)
     
-        self.automatic_radio = MRadioButton(self.tr("Automatic"))
-        self.automatic_radio.setChecked(True)
-        self.automatic_radio.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        
         # Webtoon mode toggle
         self.webtoon_toggle = MToolButton()
         self.webtoon_toggle.set_dayu_svg("webtoon-toggle.svg") 
@@ -358,8 +359,8 @@ class ComicTranslateUI(QtWidgets.QMainWindow):
         header_layout.addWidget(self.loading)
         header_layout.addStretch()
         header_layout.addWidget(self.webtoon_toggle)
-        header_layout.addWidget(self.manual_radio)
-        header_layout.addWidget(self.automatic_radio)
+        header_layout.addWidget(self.mode_label)
+        header_layout.addWidget(self.mode_switch)
         header_layout.addWidget(self.translate_button)
         header_layout.addWidget(self.cancel_button)
 

@@ -103,15 +103,25 @@ class TextBlockItem(QGraphicsTextItem):
 
     def _apply_text_direction(self):
         text_option = self.document().defaultTextOption()
-        # Cast to Qt.LayoutDirection to handle cases where it might be an int
-        # especially in newer PySide6 versions with strict type enforcement
+        # Explicitly cast to Qt.LayoutDirection for strict type enforcement in newer PySide6
         direction = self.direction
-        if isinstance(direction, int):
-            direction = Qt.LayoutDirection(direction)
+        if not isinstance(direction, Qt.LayoutDirection):
+            try:
+                direction = Qt.LayoutDirection(direction)
+            except (TypeError, ValueError):
+                direction = Qt.LayoutDirection.LeftToRight
+        
         text_option.setTextDirection(direction)
         self.document().setDefaultTextOption(text_option)
 
     def set_direction(self, direction):
+        # Ensure direction is the correct Enum type
+        if not isinstance(direction, Qt.LayoutDirection):
+            try:
+                direction = Qt.LayoutDirection(direction)
+            except (TypeError, ValueError):
+                direction = Qt.LayoutDirection.LeftToRight
+
         if self.direction != direction:
             self.direction = direction
             self._apply_text_direction()
@@ -165,6 +175,13 @@ class TextBlockItem(QGraphicsTextItem):
         self.update_alignment(alignment)
 
     def update_alignment(self, alignment):
+        # Ensure alignment is the correct Enum type for strict PySide6 versions
+        if not isinstance(alignment, Qt.AlignmentFlag):
+            try:
+                alignment = Qt.AlignmentFlag(alignment)
+            except (TypeError, ValueError):
+                alignment = Qt.AlignmentFlag.AlignCenter
+
         cursor = self.textCursor()
         has_selection = cursor.hasSelection()
         block_format = cursor.blockFormat()
@@ -336,39 +353,33 @@ class TextBlockItem(QGraphicsTextItem):
         # Then handle any selection outlines
         if self.selection_outlines:
             doc = self.document().clone()
-            painter.save()
-            try:
-                # Clear the document first to only show outlined parts
-                cursor = QTextCursor(doc)
-                cursor.select(QTextCursor.SelectionType.Document)
+            # Clear the document first to only show outlined parts
+            cursor = QTextCursor(doc)
+            cursor.select(QTextCursor.SelectionType.Document)
+            fmt = cursor.charFormat()
+            fmt.setForeground(QColor(0, 0, 0, 0))  # Transparent
+            cursor.mergeCharFormat(fmt)
+
+            # Apply outline colors only to selected regions
+            for outline_info in self.selection_outlines:
+                cursor.setPosition(outline_info.start)
+                cursor.setPosition(outline_info.end, QTextCursor.KeepAnchor)
                 fmt = cursor.charFormat()
-                fmt.setForeground(QColor(0, 0, 0, 0))  # Transparent
+                fmt.setForeground(outline_info.color)
                 cursor.mergeCharFormat(fmt)
 
-                # Apply outline colors only to selected regions
-                for outline_info in self.selection_outlines:
-                    cursor.setPosition(outline_info.start)
-                    cursor.setPosition(outline_info.end, QTextCursor.KeepAnchor)
-                    fmt = cursor.charFormat()
-                    fmt.setForeground(outline_info.color)
-                    cursor.mergeCharFormat(fmt)
-
-                    # Draw the outline for this selection
-                    offsets = [(dx, dy) 
-                        for dx in (-outline_info.width, 0, outline_info.width)
-                        for dy in (-outline_info.width, 0, outline_info.width)
-                        if dx != 0 or dy != 0
-                    ]
-                    
-                    for dx, dy in offsets:
-                        painter.save()
-                        try:
-                            painter.translate(dx, dy)
-                            doc.drawContents(painter)
-                        finally:
-                            painter.restore()
-            finally:
-                painter.restore()
+                # Draw the outline for this selection
+                offsets = [(dx, dy) 
+                    for dx in (-outline_info.width, 0, outline_info.width)
+                    for dy in (-outline_info.width, 0, outline_info.width)
+                    if dx != 0 or dy != 0
+                ]
+                
+                for dx, dy in offsets:
+                    painter.save()
+                    painter.translate(dx, dy)
+                    doc.drawContents(painter)
+                    painter.restore()
 
         # Draw the normal text on top
         super().paint(painter, option, widget)

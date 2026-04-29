@@ -133,8 +133,7 @@ class ComicTranslate(ComicTranslateUI):
         self.web_export_button.clicked.connect(self.web_export)
         self.drag_browser.sig_files_changed.connect(self._guarded_thread_load_images)
        
-        self.manual_radio.clicked.connect(self.manual_mode_selected)
-        self.automatic_radio.clicked.connect(self.batch_mode_selected)
+        self.mode_switch.toggled.connect(self.on_mode_toggled)
         
         # Webtoon mode toggle
         self.webtoon_toggle.clicked.connect(self.webtoon_ctrl.toggle_webtoon_mode)
@@ -245,14 +244,22 @@ class ComicTranslate(ComicTranslateUI):
             self.undo_group.activeStack().push(command)
 
     def batch_mode_selected(self):
+        self.mode_label.setText(self.tr("Automatic"))
         self.disable_hbutton_group()
         self.translate_button.setEnabled(True)
         self.cancel_button.setEnabled(True)
 
     def manual_mode_selected(self):
+        self.mode_label.setText(self.tr("Manual"))
         self.enable_hbutton_group()
         self.translate_button.setEnabled(False)
         self.cancel_button.setEnabled(False)
+
+    def on_mode_toggled(self, checked: bool):
+        if checked:
+            self.manual_mode_selected()
+        else:
+            self.batch_mode_selected()
 
     def on_manual_finished(self):
         self.loading.setVisible(False)
@@ -437,8 +444,8 @@ class ComicTranslate(ComicTranslateUI):
         self.selected_batch = selected_paths
 
         # disable UI & run
-        if self.manual_radio.isChecked():
-            self.automatic_radio.setChecked(True)
+        if self.mode_switch.isChecked():
+            self.mode_switch.setChecked(False)
             self.batch_mode_selected()
         self.translate_button.setEnabled(False)
         self.progress_bar.setVisible(True)
